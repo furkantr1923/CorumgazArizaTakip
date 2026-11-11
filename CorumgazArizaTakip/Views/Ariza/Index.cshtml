@@ -1,0 +1,183 @@
+﻿@model List<CorumgazArizaTakip.Models.Ariza>
+
+@{
+    ViewData["Title"] = "Arıza Listesi";
+    int sayfa = ViewBag.Sayfa ?? 1;
+    int toplamSayfa = ViewBag.ToplamSayfa ?? 1;
+    int filtreliSayi = ViewBag.FiltreliSayi ?? 0;
+    string? arama = ViewBag.Arama;
+    string? durum = ViewBag.Durum;
+}
+
+<div class="d-flex flex-wrap justify-content-between align-items-center gap-3 mb-4">
+    <div>
+        <h3 class="fw-bold mb-1">📋 Arıza Listesi</h3>
+        <p class="text-muted mb-0">Bildirimleri takip et, düzenle ve yönet.</p>
+    </div>
+    <div class="d-flex gap-2">
+        <a asp-action="Disari" asp-route-arama="@arama" asp-route-durum="@durum" class="btn btn-outline-success px-3">📄 CSV İndir</a>
+        <a asp-action="Create" class="btn btn-primary px-4">➕ Yeni Arıza</a>
+    </div>
+</div>
+
+<div class="row g-3 mb-4">
+    <div class="col-6 col-lg">
+        <div class="card border-0 shadow-sm h-100 border-start border-4 border-primary">
+            <div class="card-body">
+                <div class="text-muted small">Toplam</div>
+                <div class="fs-2 fw-bold">@ViewBag.ToplamSayi</div>
+            </div>
+        </div>
+    </div>
+    <div class="col-6 col-lg">
+        <div class="card border-0 shadow-sm h-100 border-start border-4 border-secondary">
+            <div class="card-body">
+                <div class="text-muted small">Bekliyor</div>
+                <div class="fs-2 fw-bold">@ViewBag.BekleyenSayi</div>
+            </div>
+        </div>
+    </div>
+    <div class="col-6 col-lg">
+        <div class="card border-0 shadow-sm h-100 border-start border-4 border-warning">
+            <div class="card-body">
+                <div class="text-muted small">Yolda</div>
+                <div class="fs-2 fw-bold">@ViewBag.YoldaSayi</div>
+            </div>
+        </div>
+    </div>
+    <div class="col-6 col-lg">
+        <div class="card border-0 shadow-sm h-100 border-start border-4 border-success">
+            <div class="card-body">
+                <div class="text-muted small">Çözüldü</div>
+                <div class="fs-2 fw-bold">@ViewBag.CozulenSayi</div>
+            </div>
+        </div>
+    </div>
+    <div class="col-6 col-lg">
+        <div class="card border-0 shadow-sm h-100 border-start border-4 border-danger">
+            <div class="card-body">
+                <div class="text-muted small">Acil</div>
+                <div class="fs-2 fw-bold">@ViewBag.AcilSayi</div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="card border-0 shadow-sm mb-4">
+    <div class="card-body">
+        <form method="get" class="row g-2 align-items-end">
+            <div class="col-md-5">
+                <label class="form-label small text-muted mb-1">Müşteri ara</label>
+                <input type="text" name="arama" value="@arama" class="form-control" placeholder="Müşteri adı yazın..." />
+            </div>
+            <div class="col-md-3">
+                <label class="form-label small text-muted mb-1">Durum</label>
+                <select name="durum" class="form-select">
+                    <option value="">Tümü</option>
+                    <option value="Bekliyor" selected="@(durum == "Bekliyor")">Bekliyor</option>
+                    <option value="Yolda" selected="@(durum == "Yolda")">Yolda</option>
+                    <option value="Çözüldü" selected="@(durum == "Çözüldü")">Çözüldü</option>
+                </select>
+            </div>
+            <div class="col-md-4 d-flex gap-2">
+                <button type="submit" class="btn btn-primary flex-fill">🔍 Filtrele</button>
+                <a asp-action="Index" class="btn btn-outline-secondary flex-fill">Temizle</a>
+            </div>
+        </form>
+    </div>
+</div>
+
+@if (Model.Count == 0)
+{
+    <div class="card border-0 shadow-sm">
+        <div class="card-body text-center py-5">
+            <div class="fs-1">📭</div>
+            <h5 class="mt-3">Kayıt bulunamadı</h5>
+            <p class="text-muted">Arama ya da filtreyi değiştirin veya yeni bir arıza ekleyin.</p>
+            <a asp-action="Create" class="btn btn-primary">➕ Yeni Arıza Ekle</a>
+        </div>
+    </div>
+}
+else
+{
+    <div class="card border-0 shadow-sm">
+        <div class="table-responsive">
+            <table class="table table-hover align-middle mb-0">
+                <thead class="table-light">
+                    <tr>
+                        <th class="ps-4">Müşteri</th>
+                        <th>Adres</th>
+                        <th>Arıza Türü</th>
+                        <th>Teknisyen</th>
+                        <th>Öncelik</th>
+                        <th>Durum</th>
+                        <th>Bildirim</th>
+                        <th class="text-end pe-4">İşlemler</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var a in Model)
+                    {
+                        var durumRenk = a.Durum == "Çözüldü" ? "success" : a.Durum == "Yolda" ? "warning" : "secondary";
+                        var yaziRengi = a.Durum == "Yolda" ? "text-dark" : "";
+                        var acilAcik = a.Oncelik == "Acil" && a.Durum != "Çözüldü";
+                        var satirStil = acilAcik ? "box-shadow: inset 5px 0 0 #dc3545; background-color: #fff5f5;" : "";
+
+                        <tr style="@satirStil">
+                            <td class="ps-4 fw-semibold">@a.MusteriAdi</td>
+                            <td>@a.Adres</td>
+                            <td>@a.ArizaTuru</td>
+                            <td>@(a.Teknisyen?.AdSoyad ?? "—")</td>
+                            <td>
+                                @if (a.Oncelik == "Acil")
+                                {
+                                    <span class="badge rounded-pill bg-danger">🚨 Acil</span>
+                                }
+                                else
+                                {
+                                    <span class="badge rounded-pill bg-light text-dark border">Normal</span>
+                                }
+                            </td>
+                            <td><span class="badge rounded-pill bg-@durumRenk @yaziRengi">@a.Durum</span></td>
+                            <td class="small text-muted">@a.BildirimTarihi.ToString("dd.MM.yyyy HH:mm")</td>
+                            <td class="text-end pe-4 text-nowrap">
+                                <a asp-action="Details" asp-route-id="@a.Id" class="btn btn-sm btn-outline-secondary">Detay</a>
+                                <a asp-action="Edit" asp-route-id="@a.Id" class="btn btn-sm btn-outline-primary">Düzenle</a>
+                                <form asp-action="Delete" asp-route-id="@a.Id" method="post" class="d-inline"
+                                      onsubmit="return confirm('Bu kaydı silmek istediğine emin misin?');">
+                                    <button type="submit" class="btn btn-sm btn-outline-danger">Sil</button>
+                                </form>
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mt-3">
+        <div class="text-muted small">Toplam @filtreliSayi kayıt · Sayfa @sayfa / @toplamSayfa</div>
+
+        @if (toplamSayfa > 1)
+        {
+            <nav>
+                <ul class="pagination mb-0">
+                    <li class="page-item @(sayfa == 1 ? "disabled" : "")">
+                        <a class="page-link" asp-action="Index" asp-route-sayfa="@(sayfa - 1)" asp-route-arama="@arama" asp-route-durum="@durum">‹ Önceki</a>
+                    </li>
+
+                    @for (int i = 1; i <= toplamSayfa; i++)
+                    {
+                        <li class="page-item @(i == sayfa ? "active" : "")">
+                            <a class="page-link" asp-action="Index" asp-route-sayfa="@i" asp-route-arama="@arama" asp-route-durum="@durum">@i</a>
+                        </li>
+                    }
+
+                    <li class="page-item @(sayfa == toplamSayfa ? "disabled" : "")">
+                        <a class="page-link" asp-action="Index" asp-route-sayfa="@(sayfa + 1)" asp-route-arama="@arama" asp-route-durum="@durum">Sonraki ›</a>
+                    </li>
+                </ul>
+            </nav>
+        }
+    </div>
+}

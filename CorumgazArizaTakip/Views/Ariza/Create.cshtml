@@ -1,0 +1,176 @@
+﻿@model CorumgazArizaTakip.Models.Ariza
+
+@{
+    ViewData["Title"] = "Yeni Arıza";
+}
+
+<div class="d-flex flex-wrap justify-content-between align-items-center gap-3 mb-4">
+    <div>
+        <h3 class="fw-bold mb-1">➕ Yeni Arıza</h3>
+        <p class="text-muted mb-0">Müşterinin bildirimini sisteme kaydet ve konumu haritadan işaretle.</p>
+    </div>
+    <a asp-action="Index" class="btn btn-outline-secondary px-4">← Listeye dön</a>
+</div>
+
+<div class="card border-0 shadow-sm">
+    <div class="card-body p-4 p-md-5">
+        <form asp-action="Create" method="post">
+            <div asp-validation-summary="ModelOnly" class="alert alert-danger"></div>
+
+            <div class="row g-4">
+                <div class="col-lg-5">
+                    <h6 class="text-uppercase text-muted small fw-semibold mb-3">Müşteri</h6>
+
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold">Müşteri Adı</label>
+                        <input asp-for="MusteriAdi" class="form-control" placeholder="Ad Soyad" />
+                        <span asp-validation-for="MusteriAdi" class="text-danger small"></span>
+                    </div>
+
+                    <div class="mb-4">
+                        <label class="form-label fw-semibold">Adres</label>
+                        <input asp-for="Adres" id="adres" class="form-control" placeholder="Haritadan seçince otomatik dolar" />
+                        <span asp-validation-for="Adres" class="text-danger small"></span>
+                    </div>
+
+                    <h6 class="text-uppercase text-muted small fw-semibold mb-3">Arıza</h6>
+
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold">Arıza Türü</label>
+                        <input asp-for="ArizaTuru" class="form-control" placeholder="Örn: Gaz kokusu" />
+                        <span asp-validation-for="ArizaTuru" class="text-danger small"></span>
+                    </div>
+
+                    <div class="row g-3 mb-3">
+                        <div class="col-6">
+                            <label class="form-label fw-semibold">Öncelik</label>
+                            <select asp-for="Oncelik" class="form-select">
+                                <option value="Normal">Normal</option>
+                                <option value="Acil">🚨 Acil</option>
+                            </select>
+                        </div>
+                        <div class="col-6">
+                            <label class="form-label fw-semibold">Durum</label>
+                            <select asp-for="Durum" class="form-select">
+                                <option value="Bekliyor">Bekliyor</option>
+                                <option value="Yolda">Yolda</option>
+                                <option value="Çözüldü">Çözüldü</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold">Teknisyen</label>
+                        <select asp-for="TeknisyenId" asp-items="ViewBag.Teknisyenler" class="form-select">
+                            <option value="">Atanmadı</option>
+                        </select>
+                    </div>
+
+                    <input type="hidden" asp-for="Enlem" id="enlem" />
+                    <input type="hidden" asp-for="Boylam" id="boylam" />
+                </div>
+
+                <div class="col-lg-7">
+                    <div class="d-flex justify-content-between align-items-center mb-3">
+                        <h6 class="text-uppercase text-muted small fw-semibold mb-0">Konum</h6>
+                        <button type="button" id="konumumuBul" class="btn btn-sm btn-outline-primary">📍 Konumumu Bul</button>
+                    </div>
+                    <div id="harita" class="rounded-3 shadow-sm border" style="height: 420px;"></div>
+                    <div class="alert alert-light border small mt-3 mb-0" id="konumBilgi">
+                        📍 Konum seçilmedi. Haritaya tıklayarak işaretle.
+                    </div>
+                </div>
+            </div>
+
+            <div class="d-flex justify-content-end gap-2 mt-4">
+                <a asp-action="Index" class="btn btn-outline-secondary px-4">İptal</a>
+                <button type="submit" class="btn btn-primary px-4">💾 Kaydet</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+@section Styles {
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+}
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script>
+        const harita = L.map('harita').setView([40.5503, 34.9564], 13);
+
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            maxZoom: 19,
+            attribution: '&copy; OpenStreetMap'
+        }).addTo(harita);
+
+        const adresKutusu = document.getElementById('adres');
+        let isaret = null;
+        let adresOtomatik = false;
+
+        adresKutusu.addEventListener('input', () => { adresOtomatik = false; });
+
+        async function adresiDoldur(lat, lng) {
+            if (adresKutusu.value.trim() !== '' && !adresOtomatik) return;
+
+            try {
+                const url = 'https://nominatim.openstreetmap.org/reverse?format=jsonv2&accept-language=tr&lat=' + lat + '&lon=' + lng;
+                const cevap = await fetch(url);
+                if (!cevap.ok) return;
+                const veri = await cevap.json();
+                const a = veri.address || {};
+
+                const parcalar = [
+                    a.neighbourhood || a.suburb || a.quarter,
+                    a.road,
+                    a.house_number ? 'No: ' + a.house_number : null,
+                    a.town || a.city_district || a.city
+                ].filter(Boolean);
+
+                if (parcalar.length > 0) {
+                    adresKutusu.value = parcalar.join(', ');
+                    adresOtomatik = true;
+                }
+            } catch {
+                // Adres servisine ulaşılamazsa kullanıcı adresi elle yazar.
+            }
+        }
+
+        function konumSec(lat, lng) {
+            const nokta = [lat, lng];
+
+            if (isaret) {
+                isaret.setLatLng(nokta);
+            } else {
+                isaret = L.marker(nokta).addTo(harita);
+            }
+
+            document.getElementById('enlem').value = lat.toFixed(6);
+            document.getElementById('boylam').value = lng.toFixed(6);
+            document.getElementById('konumBilgi').innerHTML =
+                '✅ Konum seçildi: <strong>' + lat.toFixed(5) + ', ' + lng.toFixed(5) + '</strong>';
+
+            adresiDoldur(lat, lng);
+        }
+
+        harita.on('click', e => konumSec(e.latlng.lat, e.latlng.lng));
+
+        document.getElementById('konumumuBul').addEventListener('click', () => {
+            if (!navigator.geolocation) {
+                alert('Tarayıcın konum özelliğini desteklemiyor.');
+                return;
+            }
+
+            navigator.geolocation.getCurrentPosition(
+                pos => {
+                    const lat = pos.coords.latitude;
+                    const lng = pos.coords.longitude;
+                    harita.setView([lat, lng], 16);
+                    konumSec(lat, lng);
+                },
+                () => alert('Konum alınamadı. Tarayıcı izin vermemiş olabilir, haritadan seçebilirsin.')
+            );
+        });
+    </script>
+}

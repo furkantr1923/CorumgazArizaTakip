@@ -1,0 +1,275 @@
+html {
+    font-size: 14px;
+    position: relative;
+    min-height: 100%;
+}
+
+@media (min-width: 768px) {
+    html {
+        font-size: 16px;
+    }
+}
+
+/* Hareketli arka plan */
+body {
+    background: linear-gradient(-45deg, #eef2f7, #e3eeff, #f4f7fb, #e6f6ef) !important;
+    background-size: 400% 400% !important;
+    animation: arkaPlanAkis 20s ease infinite;
+}
+
+@keyframes arkaPlanAkis {
+    0% {
+        background-position: 0% 50%;
+    }
+
+    50% {
+        background-position: 100% 50%;
+    }
+
+    100% {
+        background-position: 0% 50%;
+    }
+}
+
+/* Üst menü */
+.navbar {
+    background: linear-gradient(90deg, #0b1d3a, #123a6b) !important;
+    backdrop-filter: blur(6px);
+}
+
+    .navbar .nav-link {
+        position: relative;
+        transition: color .2s ease;
+    }
+
+        .navbar .nav-link::after {
+            content: "";
+            position: absolute;
+            left: 50%;
+            bottom: 2px;
+            width: 0;
+            height: 2px;
+            background: #20c997;
+            transition: width .25s ease, left .25s ease;
+        }
+
+        .navbar .nav-link:hover::after {
+            width: 70%;
+            left: 15%;
+        }
+
+/* Sayfa açılış animasyonu */
+main {
+    animation: belir .5s ease both;
+}
+
+@keyframes belir {
+    from {
+        opacity: 0;
+        transform: translateY(14px);
+    }
+
+    to {
+        opacity: 1;
+        transform: none;
+    }
+}
+
+/* Kartlar */
+.card {
+    border-radius: 1rem !important;
+    transition: transform .2s ease, box-shadow .2s ease;
+}
+
+    .card:hover {
+        transform: translateY(-3px);
+        box-shadow: 0 .8rem 1.6rem rgba(13, 40, 80, .12) !important;
+    }
+
+    /* Harita içeren kartlar oynamasın */
+    .card:has(#harita):hover {
+        transform: none;
+    }
+
+/* Kartların sırayla belirmesi */
+.row > [class*="col"] > .card {
+    animation: belir .5s ease both;
+}
+
+.row > [class*="col"]:nth-child(2) > .card {
+    animation-delay: .07s;
+}
+
+.row > [class*="col"]:nth-child(3) > .card {
+    animation-delay: .14s;
+}
+
+.row > [class*="col"]:nth-child(4) > .card {
+    animation-delay: .21s;
+}
+
+.row > [class*="col"]:nth-child(5) > .card {
+    animation-delay: .28s;
+}
+
+/* Butonlar */
+.btn {
+    border-radius: .65rem;
+    transition: transform .15s ease, box-shadow .15s ease;
+}
+
+    .btn:hover {
+        transform: translateY(-1px);
+        box-shadow: 0 .4rem .9rem rgba(13, 40, 80, .15);
+    }
+
+.btn-primary {
+    background: linear-gradient(135deg, #0d6efd, #3d8bfd);
+    border: none;
+}
+
+    .btn-primary:hover {
+        background: linear-gradient(135deg, #0b5ed7, #0d6efd);
+    }
+
+/* Form alanları */
+.form-control,
+.form-select {
+    border-radius: .65rem;
+}
+
+    .form-control:focus,
+    .form-select:focus,
+    .btn:focus,
+    .form-check-input:focus {
+        box-shadow: 0 0 0 .2rem rgba(13, 110, 253, .2);
+    }
+
+/* Tablo satırları */
+.table tbody tr {
+    transition: background-color .15s ease;
+}
+
+/* Acil rozetinde nabız efekti */
+.badge.bg-danger {
+    animation: nabiz 1.8s ease-out infinite;
+}
+
+@keyframes nabiz {
+    0% {
+        box-shadow: 0 0 0 0 rgba(220, 53, 69, .55);
+    }
+
+    70% {
+        box-shadow: 0 0 0 10px rgba(220, 53, 69, 0);
+    }
+
+    100% {
+        box-shadow: 0 0 0 0 rgba(220, 53, 69, 0);
+    }
+}
+
+/* Ana sayfa giriş alanı */
+.hero {
+    position: relative;
+    overflow: hidden;
+    border-radius: 1.5rem;
+    color: #fff;
+    background: linear-gradient(135deg, #0b1d3a, #0d6efd, #20c997);
+    background-size: 300% 300%;
+    animation: arkaPlanAkis 15s ease infinite;
+    box-shadow: 0 1rem 2.5rem rgba(13, 40, 80, .25);
+}
+
+    .hero .lead {
+        color: rgba(255, 255, 255, .85);
+    }
+
+    .hero .icerik {
+        position: relative;
+        z-index: 2;
+    }
+
+    .hero .baloncuk {
+        position: absolute;
+        border-radius: 50%;
+        background: rgba(255, 255, 255, .12);
+        animation: yuz 12s ease-in-out infinite;
+        z-index: 1;
+    }
+
+        .hero .baloncuk.b1 {
+            width: 220px;
+            height: 220px;
+            top: -60px;
+            left: -40px;
+        }
+
+        .hero .baloncuk.b2 {
+            width: 140px;
+            height: 140px;
+            bottom: -40px;
+            right: 10%;
+            animation-delay: 2s;
+        }
+
+        .hero .baloncuk.b3 {
+            width: 90px;
+            height: 90px;
+            top: 20%;
+            right: -20px;
+            animation-delay: 4s;
+        }
+
+        .hero .baloncuk.b4 {
+            width: 60px;
+            height: 60px;
+            bottom: 15%;
+            left: 20%;
+            animation-delay: 6s;
+        }
+
+@keyframes yuz {
+    0%, 100% {
+        transform: translateY(0) scale(1);
+    }
+
+    50% {
+        transform: translateY(-25px) scale(1.05);
+    }
+}
+
+.alev {
+    display: inline-block;
+    animation: titre 2.5s ease-in-out infinite;
+}
+
+@keyframes titre {
+    0%, 100% {
+        transform: rotate(-4deg) scale(1);
+    }
+
+    50% {
+        transform: rotate(4deg) scale(1.08);
+    }
+}
+
+.adim-numara {
+    width: 44px;
+    height: 44px;
+    border-radius: 50%;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 700;
+    color: #fff;
+    background: linear-gradient(135deg, #0d6efd, #20c997);
+}
+
+/* Hareket hassasiyeti olan kullanıcılar için animasyonları kapat */
+@media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after {
+        animation: none !important;
+        transition: none !important;
+    }
+}

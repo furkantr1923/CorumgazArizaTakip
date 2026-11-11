@@ -1,0 +1,51 @@
+﻿@{
+    ViewData["Title"] = "Gizlilik ve KVKK";
+}
+
+<div class="row justify-content-center">
+    <div class="col-lg-9">
+        <div class="text-center mb-4">
+            <div class="display-4">🔒</div>
+            <h3 class="fw-bold mt-2">Gizlilik ve Kişisel Verilerin Korunması</h3>
+            <p class="text-muted">6698 sayılı KVKK kapsamında aydınlatma metni</p>
+        </div>
+
+        <div class="alert alert-warning border-0 shadow-sm">
+            ⚠️ <strong>Bilgilendirme:</strong> Bu site bir <strong>portfolyo / demo</strong> çalışmasıdır.
+            Çorumgaz'ın resmi sitesi değildir ve gerçek arıza bildirimi almaz.
+            Gerçek bir acil durumda <strong>187</strong> numaralı doğal gaz acil hattını arayın.
+        </div>
+
+        <div class="card border-0 shadow-sm">
+            <div class="card-body p-4 p-md-5">
+                <h5 class="fw-semibold">1. Hangi verileri topluyoruz?</h5>
+                <p>Arıza bildirimi sırasında <strong>ad soyad</strong>, <strong>adres</strong>, <strong>arıza türü</strong> ve haritadan seçtiğiniz <strong>konum</strong> bilgisi alınır.</p>
+
+                <h5 class="fw-semibold mt-4">2. Verileri ne için kullanıyoruz?</h5>
+                <ul>
+                    <li>Arızaya en yakın ve müsait ekibi atamak</li>
+                    <li>Ekibin arıza konumuna ulaşmasını sağlamak</li>
+                    <li>Takip kodu ile arızanın durumunu size göstermek</li>
+                    <li>Hizmet kalitesini ölçmek için anonim istatistik üretmek</li>
+                </ul>
+
+                <h5 class="fw-semibold mt-4">3. Verileri kimlerle paylaşıyoruz?</h5>
+                <p>Verileriniz yalnızca arızayla ilgilenen yetkili personel ve atanan teknik ekip tarafından görülür. Takip kodu sorgusunda ad ve adres bilgisi gösterilmez.</p>
+
+                <h5 class="fw-semibold mt-4">4. Harita ve konum hizmetleri</h5>
+                <p>Harita ve adres bulma için OpenStreetMap altyapısı, rota hesabı için OSRM servisi kullanılır. "Konumumu Bul" özelliği yalnızca siz izin verirseniz çalışır.</p>
+
+                <h5 class="fw-semibold mt-4">5. Verileri ne kadar saklıyoruz?</h5>
+                <p>Kayıtlar, arızanın çözümü ve yasal saklama süreleri boyunca tutulur, süre sonunda silinir veya anonim hale getirilir.</p>
+
+                <h5 class="fw-semibold mt-4">6. Haklarınız</h5>
+                <p class="mb-0">KVKK'nın 11. maddesi kapsamında verilerinizin işlenip işlenmediğini öğrenme, düzeltilmesini veya silinmesini isteme haklarına sahipsiniz.</p>
+            </div>
+        </div>
+
+        <div class="text-center mt-4">
+            <a asp-controller="Bildirim" asp-action="Create" class="btn btn-primary px-4">📝 Arıza Bildir</a>
+            <a asp-controller="Home" asp-action="Index" class="btn btn-outline-secondary px-4">Ana Sayfa</a>
+        </div>
+    </div>
+</div>

@@ -1,0 +1,77 @@
+﻿<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>@ViewData["Title"] - Çorumgaz Arıza Takip</title>
+    <link rel="stylesheet" href="~/lib/bootstrap/dist/css/bootstrap.min.css" asp-append-version="true" />
+    <link rel="stylesheet" href="~/css/site.css" asp-append-version="true" />
+    @await RenderSectionAsync("Styles", required: false)
+</head>
+<body class="bg-light d-flex flex-column min-vh-100">
+    <nav class="navbar navbar-expand-lg navbar-dark bg-dark shadow-sm sticky-top">
+        <div class="container">
+            <a class="navbar-brand fw-bold" asp-controller="Home" asp-action="Index">
+                🔧 Çorumgaz <span class="fw-light">Arıza</span>
+            </a>
+
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navMenu" aria-controls="navMenu" aria-expanded="false" aria-label="Menü">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+
+            <div class="collapse navbar-collapse" id="navMenu">
+                @if (User.Identity?.IsAuthenticated == true)
+                {
+                    <ul class="navbar-nav me-auto">
+                        <li class="nav-item">
+                            <a class="nav-link" asp-controller="Ariza" asp-action="Index">📋 Arıza Listesi</a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link" asp-controller="Ariza" asp-action="Harita">🗺️ Harita</a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link" asp-controller="Ariza" asp-action="Grafik">📈 Grafikler</a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link" asp-controller="Teknisyen" asp-action="Index">👷 Ekipler</a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link" asp-controller="Ariza" asp-action="Create">➕ Yeni Arıza</a>
+                        </li>
+                    </ul>
+
+                    <div class="d-flex align-items-center gap-3">
+                        <span class="text-light small">👤 @User.Identity.Name</span>
+                        <a class="btn btn-sm btn-outline-light" asp-controller="Hesap" asp-action="Logout">Çıkış</a>
+                    </div>
+                }
+                else
+                {
+                    <ul class="navbar-nav me-auto">
+                        <li class="nav-item">
+                            <a class="nav-link" asp-controller="Bildirim" asp-action="Create">📝 Arıza Bildir</a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link" asp-controller="Bildirim" asp-action="Sorgu">🔎 Durum Sorgula</a>
+                        </li>
+                    </ul>
+
+                    <a class="btn btn-sm btn-outline-light" asp-controller="Hesap" asp-action="Login">Personel Girişi</a>
+                }
+            </div>
+        </div>
+    </nav>
+
+    <main class="container py-4 flex-grow-1">
+        @RenderBody()
+    </main>
+
+    <footer class="text-center text-muted small py-3 border-top bg-white">
+        © 2026 Çorumgaz Arıza Takip
+    </footer>
+
+    <script src="~/lib/jquery/dist/jquery.min.js"></script>
+    <script src="~/lib/bootstrap/dist/js/bootstrap.bundle.min.js"></script>
+    @await RenderSectionAsync("Scripts", required: false)
+</body>
+</html>

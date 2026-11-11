@@ -1,0 +1,33 @@
+﻿@model ErrorViewModel
+
+@{
+    ViewData["Title"] = "Bir hata oluştu";
+}
+
+<div class="row justify-content-center">
+    <div class="col-md-8 col-lg-6">
+        <div class="card border-0 shadow-sm text-center">
+            <div class="card-body p-5">
+                <div class="display-1 mb-3">🛠️</div>
+                <h3 class="fw-bold">Bir şeyler ters gitti</h3>
+                <p class="text-muted mt-2">İsteğiniz işlenirken beklenmeyen bir hata oluştu. Lütfen biraz sonra tekrar deneyin.</p>
+
+                @if (Model?.ShowRequestId == true)
+                {
+                    <p class="small text-muted">
+                        Hata kodu: <code>@Model.RequestId</code>
+                    </p>
+                }
+
+                <div class="d-flex justify-content-center gap-2 mt-4">
+                    <a asp-controller="Home" asp-action="Index" class="btn btn-primary px-4">Ana Sayfa</a>
+                    <a href="javascript:history.back()" class="btn btn-outline-secondary px-4">← Geri dön</a>
+                </div>
+
+                <div class="alert alert-danger small mt-4 mb-0">
+                    🚨 Gaz kokusu gibi acil bir durumdaysanız beklemeden <strong>187</strong>'yi arayın.
+                </div>
+            </div>
+        </div>
+    </div>
+</div>

@@ -1,0 +1,136 @@
+﻿@model CorumgazArizaTakip.Models.Ariza
+@using System.Globalization
+
+@{
+    ViewData["Title"] = "Arıza Düzenle";
+    var konumVar = Model.Enlem != null && Model.Boylam != null;
+}
+
+<div class="d-flex flex-wrap justify-content-between align-items-center gap-3 mb-4">
+    <div>
+        <h3 class="fw-bold mb-1">✏️ Arıza Düzenle</h3>
+        <p class="text-muted mb-0">#@Model.Id numaralı kaydı güncelliyorsun.</p>
+    </div>
+    <a asp-action="Details" asp-route-id="@Model.Id" class="btn btn-outline-secondary px-4">← Detaya dön</a>
+</div>
+
+<div class="card border-0 shadow-sm">
+    <div class="card-body p-4 p-md-5">
+        <form asp-action="Edit" method="post">
+            <input type="hidden" asp-for="Id" />
+            <input type="hidden" asp-for="Enlem" id="enlem" />
+            <input type="hidden" asp-for="Boylam" id="boylam" />
+            <div asp-validation-summary="ModelOnly" class="alert alert-danger"></div>
+
+            <div class="row g-4">
+                <div class="col-lg-6">
+                    <h6 class="text-uppercase text-muted small fw-semibold mb-3">Müşteri</h6>
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold">Müşteri Adı</label>
+                        <input asp-for="MusteriAdi" class="form-control" />
+                        <span asp-validation-for="MusteriAdi" class="text-danger small"></span>
+                    </div>
+                    <div class="mb-4">
+                        <label class="form-label fw-semibold">Adres</label>
+                        <input asp-for="Adres" class="form-control" />
+                        <span asp-validation-for="Adres" class="text-danger small"></span>
+                    </div>
+
+                    <h6 class="text-uppercase text-muted small fw-semibold mb-3">Arıza</h6>
+                    <div class="row g-3 mb-3">
+                        <div class="col-md-6">
+                            <label class="form-label fw-semibold">Arıza Türü</label>
+                            <input asp-for="ArizaTuru" class="form-control" />
+                            <span asp-validation-for="ArizaTuru" class="text-danger small"></span>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label fw-semibold">Teknisyen</label>
+                            <select asp-for="TeknisyenId" asp-items="ViewBag.Teknisyenler" class="form-select">
+                                <option value="">Atanmadı</option>
+                            </select>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label fw-semibold">Öncelik</label>
+                            <select asp-for="Oncelik" class="form-select">
+                                <option value="Normal">Normal</option>
+                                <option value="Acil">🚨 Acil</option>
+                            </select>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label fw-semibold">Durum</label>
+                            <select asp-for="Durum" class="form-select">
+                                <option value="Bekliyor">Bekliyor</option>
+                                <option value="Yolda">Yolda</option>
+                                <option value="Çözüldü">Çözüldü</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <h6 class="text-uppercase text-muted small fw-semibold mb-3 mt-4">Çözüm</h6>
+                    <textarea asp-for="CozumNotu" class="form-control" rows="4"
+                              placeholder="Arızada ne yapıldığını yaz. Durum 'Çözüldü' olunca kapanış tarihi otomatik kaydedilir."></textarea>
+                    <span asp-validation-for="CozumNotu" class="text-danger small"></span>
+
+                    @if (Model.KapanisTarihi != null)
+                    {
+                        <div class="alert alert-success small py-2 mt-3 mb-0">
+                            ✅ Kapanış tarihi: <strong>@Model.KapanisTarihi.Value.ToString("dd.MM.yyyy HH:mm")</strong>
+                        </div>
+                    }
+                </div>
+
+                <div class="col-lg-6">
+                    <h6 class="text-uppercase text-muted small fw-semibold mb-3">Konum</h6>
+                    <div id="harita" class="rounded-3 shadow-sm border" style="height: 460px;"></div>
+                    <div class="alert alert-light border small mt-3 mb-0" id="konumBilgi">
+                        @(konumVar ? "📍 Mevcut konum işaretli. Değiştirmek için haritaya tıkla." : "📍 Konum seçilmemiş. Haritaya tıklayarak işaretle.")
+                    </div>
+                </div>
+            </div>
+
+            <div class="d-flex justify-content-end gap-2 pt-4">
+                <a asp-action="Details" asp-route-id="@Model.Id" class="btn btn-outline-secondary px-4">İptal</a>
+                <button type="submit" class="btn btn-primary px-4">💾 Kaydet</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+@section Styles {
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+}
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script>
+        const baslangic = @(konumVar
+                    ? Html.Raw("[" + Model.Enlem!.Value.ToString(CultureInfo.InvariantCulture) + "," + Model.Boylam!.Value.ToString(CultureInfo.InvariantCulture) + "]")
+                : Html.Raw("null"));
+
+        const harita = L.map('harita').setView(baslangic || [40.5503, 34.9564], baslangic ? 16 : 13);
+
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            maxZoom: 19,
+            attribution: '&copy; OpenStreetMap'
+        }).addTo(harita);
+
+        let isaret = baslangic ? L.marker(baslangic).addTo(harita) : null;
+
+        harita.on('click', e => {
+            const lat = e.latlng.lat;
+            const lng = e.latlng.lng;
+
+            if (isaret) {
+                isaret.setLatLng(e.latlng);
+            } else {
+                isaret = L.marker(e.latlng).addTo(harita);
+            }
+
+            document.getElementById('enlem').value = lat.toFixed(6);
+            document.getElementById('boylam').value = lng.toFixed(6);
+            document.getElementById('konumBilgi').innerHTML =
+                '✅ Yeni konum: <strong>' + lat.toFixed(5) + ', ' + lng.toFixed(5) + '</strong> (kaydetmeyi unutma)';
+        });
+    </script>
+}

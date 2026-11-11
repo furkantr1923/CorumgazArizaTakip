@@ -1,0 +1,160 @@
+﻿@model CorumgazArizaTakip.Models.Ariza?
+@using System.Globalization
+
+@{
+    ViewData["Title"] = "Arıza Durumu Sorgula";
+}
+
+<div class="row justify-content-center">
+    <div class="col-lg-9">
+        <div class="text-center mb-4">
+            <div class="display-4">🔎</div>
+            <h3 class="fw-bold mt-2">Arıza Durumu Sorgula</h3>
+            <p class="text-muted">Bildirim sırasında aldığın takip kodunu gir.</p>
+        </div>
+
+        <div class="card border-0 shadow-sm mb-4">
+            <div class="card-body p-4">
+                <form method="get" asp-action="Sorgu">
+                    <div class="input-group input-group-lg">
+                        <input type="text" name="kod" value="@ViewBag.Kod" class="form-control font-monospace text-uppercase"
+                               placeholder="CRZ-XXXXXX" required />
+                        <button class="btn btn-primary px-4" type="submit">Sorgula</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        @if (ViewBag.Kod != null && Model == null)
+        {
+            <div class="alert alert-warning border-0 shadow-sm">
+                😕 Bu takip koduyla kayıt bulunamadı. Kodu kontrol edip tekrar dene.
+            </div>
+        }
+
+        @if (Model != null)
+        {
+            var atandi = Model.TeknisyenId != null;
+            var yolda = Model.Durum == "Yolda" || Model.Durum == "Çözüldü";
+            var cozuldu = Model.Durum == "Çözüldü";
+
+            var adimlar = new[]
+            {
+                (Baslik: "Bildirim Alındı", Ikon: "📥", Tamam: true),
+                (Baslik: "Ekip Atandı", Ikon: "👷", Tamam: atandi),
+                (Baslik: "Ekip Yolda", Ikon: "🚗", Tamam: yolda),
+                (Baslik: "Çözüldü", Ikon: "✅", Tamam: cozuldu)
+            };
+
+            var konumVar = Model.Enlem != null && Model.Boylam != null;
+            var ekipGoster = konumVar && Model.Durum == "Yolda"
+                             && Model.Teknisyen?.Enlem != null && Model.Teknisyen?.Boylam != null;
+
+            string Sayi(double? d) => d?.ToString(CultureInfo.InvariantCulture) ?? "0";
+
+            double? ekipMesafe = ekipGoster
+                ? CorumgazArizaTakip.Controllers.ArizaController.MesafeKm(
+                    Model.Enlem!.Value, Model.Boylam!.Value,
+                    Model.Teknisyen!.Enlem!.Value, Model.Teknisyen!.Boylam!.Value)
+                : null;
+
+            <div class="card border-0 shadow-sm mb-4">
+                <div class="card-body p-4">
+                    <div class="d-flex flex-wrap justify-content-between align-items-start gap-2 mb-4">
+                        <div>
+                            <div class="small text-muted">Takip Kodu</div>
+                            <div class="fs-5 fw-bold font-monospace">@Model.TakipKodu</div>
+                        </div>
+                        @if (Model.Oncelik == "Acil")
+                        {
+                            <span class="badge rounded-pill bg-danger fs-6 px-3 py-2">🚨 Acil</span>
+                        }
+                    </div>
+
+                    <div class="row text-center g-2 mb-4">
+                        @foreach (var adim in adimlar)
+                        {
+                            <div class="col-3">
+                                <div class="rounded-circle mx-auto d-flex align-items-center justify-content-center fs-4 @(adim.Tamam ? "bg-success text-white" : "bg-light border text-muted")"
+                                     style="width:56px;height:56px;">
+                                    @adim.Ikon
+                                </div>
+                                <div class="small mt-2 @(adim.Tamam ? "fw-semibold" : "text-muted")">@adim.Baslik</div>
+                            </div>
+                        }
+                    </div>
+
+                    <div class="row g-4">
+                        <div class="col-sm-6">
+                            <div class="small text-muted">Arıza Türü</div>
+                            <div>@Model.ArizaTuru</div>
+                        </div>
+                        <div class="col-sm-6">
+                            <div class="small text-muted">Bildirim Tarihi</div>
+                            <div>@Model.BildirimTarihi.ToString("dd.MM.yyyy HH:mm")</div>
+                        </div>
+                        <div class="col-sm-6">
+                            <div class="small text-muted">Ekip</div>
+                            <div>@(Model.Teknisyen?.AdSoyad ?? "Henüz atanmadı")</div>
+                        </div>
+                        <div class="col-sm-6">
+                            <div class="small text-muted">@(cozuldu ? "Kapanış Tarihi" : "Güncel Durum")</div>
+                            <div>@(cozuldu ? Model.KapanisTarihi?.ToString("dd.MM.yyyy HH:mm") ?? "—" : Model.Durum)</div>
+                        </div>
+                    </div>
+
+                    @if (ekipMesafe != null)
+                    {
+                        <div class="alert alert-primary small mt-4 mb-0">
+                            🚗 Ekibimiz yolda, konumunuza yaklaşık <strong>@ekipMesafe.Value.ToString("F1") km</strong> uzaklıkta.
+                        </div>
+                    }
+                </div>
+            </div>
+
+            @if (konumVar)
+            {
+                <div class="card border-0 shadow-sm">
+                    <div class="card-body p-2">
+                        <div id="harita" class="rounded-3" style="height: 380px;"></div>
+                    </div>
+                </div>
+
+                @section Styles {
+                    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+                }
+
+                @section Scripts {
+                    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+                    <script>
+                                const arizaKonum = [@Sayi(Model.Enlem), @Sayi(Model.Boylam)];
+                                const harita = L.map('harita').setView(arizaKonum, 15);
+
+                                L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                                    maxZoom: 19,
+                                    attribution: '&copy; OpenStreetMap'
+                                }).addTo(harita);
+
+                                L.marker(arizaKonum).addTo(harita).bindPopup('📍 Arıza konumu').openPopup();
+
+                                @if (ekipGoster)
+                                    {
+                                        <text>
+                                                                    const ekipKonum = [@Sayi(Model.Teknisyen!.Enlem), @Sayi(Model.Teknisyen!.Boylam)];
+                                        L.circleMarker(ekipKonum, {
+                                            radius: 10, color: '#fff', weight: 2, fillColor: '#0d6efd', fillOpacity: 0.95
+                                        }).addTo(harita).bindPopup('🚗 Ekibimiz');
+
+                                        L.polyline([ekipKonum, arizaKonum], {
+                                            color: '#0d6efd', weight: 3, dashArray: '6 8'
+                                        }).addTo(harita);
+
+                                        harita.fitBounds([ekipKonum, arizaKonum], { padding: [50, 50] });
+                                    </text>
+                                }
+                    </script>
+                }
+            }
+        }
+    </div>
+</div>

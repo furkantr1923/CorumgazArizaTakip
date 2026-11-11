@@ -1,0 +1,132 @@
+﻿@{
+    ViewData["Title"] = "Grafikler";
+    double ortalamaSaat = ViewBag.OrtalamaSaat ?? 0.0;
+    int kapananSayi = ViewBag.KapananSayi ?? 0;
+    string ortalamaMetin = kapananSayi == 0
+        ? "—"
+        : ortalamaSaat < 1
+            ? $"{Math.Round(ortalamaSaat * 60)} dk"
+            : $"{ortalamaSaat:F1} saat";
+}
+
+<div class="d-flex flex-wrap justify-content-between align-items-center gap-3 mb-4">
+    <div>
+        <h3 class="fw-bold mb-1">📈 Grafikler</h3>
+        <p class="text-muted mb-0">Arıza verilerinin özeti ve dağılımı.</p>
+    </div>
+    <a asp-action="Index" class="btn btn-outline-secondary px-4">← Listeye dön</a>
+</div>
+
+<div class="row g-3 mb-4">
+    <div class="col-6 col-lg-3">
+        <div class="card border-0 shadow-sm h-100 border-start border-4 border-primary">
+            <div class="card-body">
+                <div class="text-muted small">Toplam Arıza</div>
+                <div class="fs-2 fw-bold">@ViewBag.ToplamSayi</div>
+            </div>
+        </div>
+    </div>
+    <div class="col-6 col-lg-3">
+        <div class="card border-0 shadow-sm h-100 border-start border-4 border-danger">
+            <div class="card-body">
+                <div class="text-muted small">Acil Oranı</div>
+                <div class="fs-2 fw-bold">%@ViewBag.AcilOrani</div>
+            </div>
+        </div>
+    </div>
+    <div class="col-6 col-lg-3">
+        <div class="card border-0 shadow-sm h-100 border-start border-4 border-success">
+            <div class="card-body">
+                <div class="text-muted small">Çözülme Oranı</div>
+                <div class="fs-2 fw-bold">%@ViewBag.CozulmeOrani</div>
+            </div>
+        </div>
+    </div>
+    <div class="col-6 col-lg-3">
+        <div class="card border-0 shadow-sm h-100 border-start border-4 border-info">
+            <div class="card-body">
+                <div class="text-muted small">Ortalama Çözüm Süresi</div>
+                <div class="fs-2 fw-bold">@ortalamaMetin</div>
+                <div class="small text-muted">@kapananSayi kapanan arızaya göre</div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row g-4">
+    <div class="col-lg-8">
+        <div class="card border-0 shadow-sm h-100">
+            <div class="card-header bg-white border-0 pt-3">
+                <h6 class="fw-semibold mb-0">Aylık Arıza Sayısı</h6>
+            </div>
+            <div class="card-body">
+                <canvas id="aylikGrafik"></canvas>
+            </div>
+        </div>
+    </div>
+    <div class="col-lg-4">
+        <div class="card border-0 shadow-sm h-100">
+            <div class="card-header bg-white border-0 pt-3">
+                <h6 class="fw-semibold mb-0">Durum Dağılımı</h6>
+            </div>
+            <div class="card-body">
+                <canvas id="durumGrafik"></canvas>
+            </div>
+        </div>
+    </div>
+    <div class="col-12">
+        <div class="card border-0 shadow-sm">
+            <div class="card-header bg-white border-0 pt-3">
+                <h6 class="fw-semibold mb-0">Arıza Türleri</h6>
+            </div>
+            <div class="card-body">
+                <canvas id="turGrafik"></canvas>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script>
+        const aylarEtiket = @Html.Raw(ViewBag.AylarEtiket);
+        const aylarVeri = @Html.Raw(ViewBag.AylarVeri);
+        const turEtiket = @Html.Raw(ViewBag.TurEtiket);
+        const turVeri = @Html.Raw(ViewBag.TurVeri);
+        const durumVeri = @Html.Raw(ViewBag.DurumVeri);
+
+        new Chart(document.getElementById('aylikGrafik'), {
+            type: 'bar',
+            data: {
+                labels: aylarEtiket,
+                datasets: [{ label: 'Arıza sayısı', data: aylarVeri, backgroundColor: '#0d6efd', borderRadius: 6 }]
+            },
+            options: {
+                plugins: { legend: { display: false } },
+                scales: { y: { beginAtZero: true, ticks: { precision: 0 } } }
+            }
+        });
+
+        new Chart(document.getElementById('durumGrafik'), {
+            type: 'doughnut',
+            data: {
+                labels: ['Bekliyor', 'Yolda', 'Çözüldü'],
+                datasets: [{ data: durumVeri, backgroundColor: ['#6c757d', '#ffc107', '#198754'] }]
+            },
+            options: { plugins: { legend: { position: 'bottom' } } }
+        });
+
+        new Chart(document.getElementById('turGrafik'), {
+            type: 'bar',
+            data: {
+                labels: turEtiket,
+                datasets: [{ label: 'Arıza sayısı', data: turVeri, backgroundColor: '#20c997', borderRadius: 6 }]
+            },
+            options: {
+                indexAxis: 'y',
+                plugins: { legend: { display: false } },
+                scales: { x: { beginAtZero: true, ticks: { precision: 0 } } }
+            }
+        });
+    </script>
+}

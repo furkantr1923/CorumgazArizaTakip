@@ -1,0 +1,52 @@
+﻿@{
+    ViewData["Title"] = "Bildirim Alındı";
+}
+
+<div class="row justify-content-center">
+    <div class="col-md-8 col-lg-6">
+        <div class="card border-0 shadow-sm text-center">
+            <div class="card-body p-5">
+                <div class="display-1 mb-3">✅</div>
+                <h3 class="fw-bold">Bildiriminiz alındı</h3>
+
+                @if (ViewBag.Kod != null)
+                {
+                    <p class="text-muted mt-2 mb-4">Aşağıdaki takip kodunu not alın. Arızanızın durumunu bu kodla sorgulayabilirsiniz.</p>
+
+                    <div class="bg-light border rounded-3 py-4 px-3 mb-4">
+                        <div class="small text-muted text-uppercase mb-1">Takip Kodunuz</div>
+                        <div class="display-6 fw-bold font-monospace text-primary">@ViewBag.Kod</div>
+                    </div>
+
+                    @if (ViewBag.Oncelik == "Acil")
+                    {
+                        <div class="alert alert-danger text-start">
+                            🚨 Bildiriminiz <strong>acil</strong> olarak işaretlendi. Gaz kokusu varsa ortamı havalandırın ve <strong>187</strong>'yi arayın.
+                        </div>
+                    }
+
+                    @if (ViewBag.Teknisyen != null)
+                    {
+                        <div class="alert alert-success text-start">
+                            👷 Ekibimiz atandı: <strong>@ViewBag.Teknisyen</strong><br />
+                            <span class="small">Konumunuza yaklaşık <strong>@ViewBag.Mesafe km</strong> uzaklıkta.</span>
+                        </div>
+                    }
+                    else
+                    {
+                        <div class="alert alert-warning text-start">
+                            ⏳ Şu an müsait ekip yok. Bildiriminiz sıraya alındı, en kısa sürede bir ekip atanacak.
+                        </div>
+                    }
+
+                    <a asp-action="Sorgu" asp-route-kod="@ViewBag.Kod" class="btn btn-primary btn-lg px-5">Durumu Sorgula</a>
+                }
+                else
+                {
+                    <p class="text-muted mt-2 mb-4">Takip kodu bulunamadı.</p>
+                    <a asp-action="Sorgu" class="btn btn-outline-secondary">Durum sorgula</a>
+                }
+            </div>
+        </div>
+    </div>
+</div>

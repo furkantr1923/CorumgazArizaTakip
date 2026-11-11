@@ -1,0 +1,353 @@
+﻿@model CorumgazArizaTakip.Models.Ariza
+@using System.Globalization
+@using System.Text.Json
+
+@{
+    ViewData["Title"] = "Arıza Detayı";
+    var oncelikRenk = Model.Oncelik == "Acil" ? "danger" : "secondary";
+    var durumRenk = Model.Durum == "Çözüldü" ? "success" : Model.Durum == "Yolda" ? "warning" : "secondary";
+    var durumYazi = Model.Durum == "Yolda" ? "text-dark" : "";
+    var mesafeler = ViewBag.Mesafeler as List<CorumgazArizaTakip.Controllers.TeknisyenMesafe> ?? new();
+    var konumVar = Model.Enlem != null && Model.Boylam != null;
+    var enlem = konumVar ? Model.Enlem!.Value.ToString(CultureInfo.InvariantCulture) : "0";
+    var boylam = konumVar ? Model.Boylam!.Value.ToString(CultureInfo.InvariantCulture) : "0";
+
+    int seciliIndex = 0;
+    if (Model.TeknisyenId != null)
+    {
+        var atanan = mesafeler.FindIndex(m => m.Id == Model.TeknisyenId);
+        if (atanan >= 0) seciliIndex = atanan;
+    }
+    var ilkMusait = mesafeler.FindIndex(m => m.Musait);
+    var seciliTeknisyenId = mesafeler.Count > 0 ? mesafeler[seciliIndex].Id : 0;
+}
+
+<div class="d-flex flex-wrap justify-content-between align-items-center gap-3 mb-4">
+    <div>
+        <h3 class="fw-bold mb-1">🔍 Arıza Detayı</h3>
+        <p class="text-muted mb-0">#@Model.Id numaralı kayıt · <span class="font-monospace">@Model.TakipKodu</span></p>
+    </div>
+    <div class="d-flex flex-wrap gap-2">
+        @if (Model.Durum == "Bekliyor")
+        {
+            <form asp-action="HizliDurum" method="post" class="d-inline">
+                <input type="hidden" name="id" value="@Model.Id" />
+                <input type="hidden" name="yeniDurum" value="Yolda" />
+                <button type="submit" class="btn btn-warning">🚗 Yola Çık</button>
+            </form>
+        }
+        @if (Model.Durum != "Çözüldü")
+        {
+            <form asp-action="HizliDurum" method="post" class="d-inline" id="cozFormu">
+                <input type="hidden" name="id" value="@Model.Id" />
+                <input type="hidden" name="yeniDurum" value="Çözüldü" />
+                <input type="hidden" name="cozumNotu" id="cozumNotuAlan" />
+                <button type="submit" class="btn btn-success">✅ Çözüldü</button>
+            </form>
+        }
+        else
+        {
+            <form asp-action="HizliDurum" method="post" class="d-inline"
+                  onsubmit="return confirm('Arıza yeniden açılsın mı?');">
+                <input type="hidden" name="id" value="@Model.Id" />
+                <input type="hidden" name="yeniDurum" value="Bekliyor" />
+                <button type="submit" class="btn btn-outline-secondary">↩️ Yeniden Aç</button>
+            </form>
+        }
+        <a asp-action="Edit" asp-route-id="@Model.Id" class="btn btn-primary">✏️ Düzenle</a>
+        <a asp-action="Index" class="btn btn-outline-secondary">← Liste</a>
+    </div>
+</div>
+
+@if (TempData["Mesaj"] != null)
+{
+    <div class="alert alert-success border-0 shadow-sm">✅ @TempData["Mesaj"]</div>
+}
+@if (TempData["Hata"] != null)
+{
+    <div class="alert alert-danger border-0 shadow-sm">⚠️ @TempData["Hata"]</div>
+}
+
+<div class="row g-4">
+    <div class="col-lg-5">
+        <div class="card border-0 shadow-sm mb-4">
+            <div class="card-body p-4">
+                <h6 class="text-uppercase text-muted small fw-semibold mb-3">Müşteri</h6>
+                <div class="fs-5 fw-semibold">@Model.MusteriAdi</div>
+                <div class="text-muted">📍 @Model.Adres</div>
+
+                <hr class="my-4" />
+
+                <h6 class="text-uppercase text-muted small fw-semibold mb-3">Arıza</h6>
+                <div class="row g-3">
+                    <div class="col-6">
+                        <div class="text-muted small">Arıza Türü</div>
+                        <div class="fw-semibold">@Model.ArizaTuru</div>
+                    </div>
+                    <div class="col-6">
+                        <div class="text-muted small">Atanan Teknisyen</div>
+                        <div class="fw-semibold">@(Model.Teknisyen?.AdSoyad ?? "Atanmadı")</div>
+                    </div>
+                    <div class="col-6">
+                        <div class="text-muted small">Öncelik</div>
+                        <span class="badge rounded-pill bg-@oncelikRenk">@Model.Oncelik</span>
+                    </div>
+                    <div class="col-6">
+                        <div class="text-muted small">Durum</div>
+                        <span class="badge rounded-pill bg-@durumRenk @durumYazi">@Model.Durum</span>
+                    </div>
+                    <div class="col-6">
+                        <div class="text-muted small">Bildirim</div>
+                        <div>@Model.BildirimTarihi.ToString("dd.MM.yyyy HH:mm")</div>
+                    </div>
+                    <div class="col-6">
+                        <div class="text-muted small">Kapanış</div>
+                        <div>@(Model.KapanisTarihi?.ToString("dd.MM.yyyy HH:mm") ?? "—")</div>
+                    </div>
+                    @if (Model.KvkkOnayTarihi != null)
+                    {
+                        <div class="col-12">
+                            <div class="text-muted small">KVKK Onayı</div>
+                            <div class="small">🔒 @Model.KvkkOnayTarihi.Value.ToString("dd.MM.yyyy HH:mm")</div>
+                        </div>
+                    }
+                </div>
+
+                @if (!string.IsNullOrWhiteSpace(Model.CozumNotu))
+                {
+                    <hr class="my-4" />
+                    <h6 class="text-uppercase text-muted small fw-semibold mb-2">Çözüm Notu</h6>
+                    <p class="mb-0">@Model.CozumNotu</p>
+                }
+            </div>
+        </div>
+
+        <div class="card border-0 shadow-sm mb-4">
+            <div class="card-body p-4">
+                <h6 class="fw-semibold mb-1">👷 Teknisyenler</h6>
+                <p class="text-muted small mb-3">Bir teknisyene tıkla, rotası çizilsin. Uygunsa aşağıdan ata.</p>
+
+                @if (!konumVar || mesafeler.Count == 0)
+                {
+                    <p class="text-muted mb-0">Konum ya da teknisyen konumu olmadığı için hesaplanamadı.</p>
+                }
+                else
+                {
+                    <div class="list-group" id="teknisyenListe">
+                        @for (int i = 0; i < mesafeler.Count; i++)
+                        {
+                            var m = mesafeler[i];
+                            <button type="button"
+                                    class="list-group-item list-group-item-action d-flex justify-content-between align-items-center @(i == seciliIndex ? "active" : "")"
+                                    data-index="@i">
+                                <span>
+                                    <span class="fw-semibold">@m.AdSoyad</span>
+                                    <span class="small opacity-75">· @m.Bolge</span><br />
+                                    @if (m.Id == Model.TeknisyenId)
+                                    {
+                                        <span class="badge bg-primary">Atanan</span>
+                                    }
+                                    @if (i == ilkMusait)
+                                    {
+                                        <span class="badge bg-success">En yakın müsait</span>
+                                    }
+                                    @if (!m.Musait)
+                                    {
+                                        <span class="badge bg-secondary">Görevde</span>
+                                    }
+                                </span>
+                                <span class="small text-nowrap">@m.Mesafe.ToString("F1") km</span>
+                            </button>
+                        }
+                    </div>
+
+                    @if (Model.Durum != "Çözüldü")
+                    {
+                        <form asp-action="TeknisyenAta" method="post" class="mt-3">
+                            <input type="hidden" name="id" value="@Model.Id" />
+                            <input type="hidden" name="teknisyenId" id="seciliTeknisyenId" value="@seciliTeknisyenId" />
+                            <button type="submit" class="btn btn-outline-primary w-100" id="ataButonu">👷 Seçili teknisyeni ata</button>
+                        </form>
+                    }
+
+                    <div class="text-muted small mt-2">Liste mesafesi kuş uçuşudur, gerçek yol mesafesi haritada yazar.</div>
+                }
+            </div>
+        </div>
+
+        <div class="card border-0 shadow-sm">
+            <div class="card-body p-4">
+                <h6 class="fw-semibold mb-4">📜 Durum Geçmişi</h6>
+
+                @if (Model.DurumGecmisleri.Count == 0)
+                {
+                    <p class="text-muted mb-0">Henüz geçmiş kaydı yok.</p>
+                }
+                else
+                {
+                    <ul class="list-unstyled mb-0">
+                        @foreach (var g in Model.DurumGecmisleri.OrderByDescending(x => x.Tarih))
+                        {
+                            <li class="d-flex gap-3 pb-3 mb-3 border-bottom">
+                                <div class="text-muted small text-nowrap pt-1">@g.Tarih.ToString("dd.MM.yyyy HH:mm")</div>
+                                <div>
+                                    @if (g.EskiDurum == g.YeniDurum)
+                                    {
+                                        <span class="badge rounded-pill bg-light text-dark border">@g.YeniDurum</span>
+                                    }
+                                    else
+                                    {
+                                        <div class="small text-muted">@g.EskiDurum → </div>
+                                        <span class="badge rounded-pill bg-light text-dark border">@g.YeniDurum</span>
+                                    }
+                                    @if (!string.IsNullOrEmpty(g.Degistiren))
+                                    {
+                                        <div class="small text-muted mt-1">👤 @g.Degistiren</div>
+                                    }
+                                </div>
+                            </li>
+                        }
+                    </ul>
+                }
+            </div>
+        </div>
+    </div>
+
+    <div class="col-lg-7">
+        <div class="card border-0 shadow-sm">
+            <div class="card-body p-4">
+                <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
+                    <h6 class="fw-semibold mb-0">🗺️ Konum ve Rota</h6>
+                    @if (konumVar)
+                    {
+                        <a class="btn btn-sm btn-success" target="_blank" rel="noopener"
+                           href="https://www.google.com/maps/dir/?api=1&destination=@enlem,@boylam">🧭 Telefonda Yol Tarifi</a>
+                    }
+                </div>
+
+                @if (konumVar)
+                {
+                    <div id="rotaBilgi" class="alert alert-primary py-2 small mb-3">Rota hesaplanıyor...</div>
+                    <div id="harita" class="rounded-3 border" style="height: 560px;"></div>
+                }
+                else
+                {
+                    <p class="text-muted mb-0">Bu kayıt için konum seçilmemiş. <a asp-action="Edit" asp-route-id="@Model.Id">Düzenle</a> sayfasından haritadan ekleyebilirsin.</p>
+                }
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Styles {
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+}
+
+@section Scripts {
+    <script>
+        const cozFormu = document.getElementById('cozFormu');
+        if (cozFormu) {
+            cozFormu.addEventListener('submit', e => {
+                const not = prompt('Çözüm notu (ne yapıldı?) — boş bırakabilirsin:', '');
+                if (not === null) {
+                    e.preventDefault();
+                    return;
+                }
+                document.getElementById('cozumNotuAlan').value = not;
+            });
+        }
+    </script>
+
+    @if (konumVar)
+    {
+        <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+        <script>
+            const arizaKonum = [@enlem, @boylam];
+            const teknisyenler = @Html.Raw(JsonSerializer.Serialize(mesafeler));
+            const harita = L.map('harita').setView(arizaKonum, 14);
+
+            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                maxZoom: 19,
+                attribution: '&copy; OpenStreetMap'
+            }).addTo(harita);
+
+            L.marker(arizaKonum).addTo(harita).bindPopup('🔥 Arıza konumu');
+
+            teknisyenler.forEach(t => {
+                L.circleMarker([t.Enlem, t.Boylam], {
+                    radius: 8,
+                    color: '#fff',
+                    weight: 2,
+                    fillColor: t.Musait ? '#0d6efd' : '#6f42c1',
+                    fillOpacity: 0.95
+                }).addTo(harita).bindPopup('👷 ' + t.AdSoyad + (t.Musait ? ' · Müsait' : ' · Görevde'));
+            });
+
+            const rotaBilgi = document.getElementById('rotaBilgi');
+            const seciliAlan = document.getElementById('seciliTeknisyenId');
+            const ataButonu = document.getElementById('ataButonu');
+            let rotaKatmani = null;
+
+            async function rotaCiz(index) {
+                const t = teknisyenler[index];
+                if (!t) return;
+
+                document.querySelectorAll('#teknisyenListe [data-index]').forEach(b => {
+                    b.classList.toggle('active', Number(b.dataset.index) === index);
+                });
+
+                if (seciliAlan) seciliAlan.value = t.Id;
+                if (ataButonu) ataButonu.textContent = '👷 ' + t.AdSoyad + ' adlı teknisyeni ata';
+
+                if (rotaKatmani) {
+                    harita.removeLayer(rotaKatmani);
+                    rotaKatmani = null;
+                }
+
+                rotaBilgi.className = 'alert alert-primary py-2 small mb-3';
+                rotaBilgi.textContent = '⏳ ' + t.AdSoyad + ' için rota hesaplanıyor...';
+
+                const url = 'https://router.project-osrm.org/route/v1/driving/'
+                    + t.Boylam + ',' + t.Enlem + ';' + arizaKonum[1] + ',' + arizaKonum[0]
+                    + '?overview=full&geometries=geojson';
+
+                try {
+                    const cevap = await fetch(url);
+                    const veri = await cevap.json();
+                    if (!veri.routes || veri.routes.length === 0) throw new Error('Rota yok');
+
+                    const rota = veri.routes[0];
+                    rotaKatmani = L.geoJSON(rota.geometry, {
+                        style: { color: '#0d6efd', weight: 6, opacity: 0.8 }
+                    }).addTo(harita);
+
+                    harita.fitBounds(rotaKatmani.getBounds(), { padding: [40, 40] });
+
+                    const km = (rota.distance / 1000).toFixed(1);
+                    const dk = Math.max(1, Math.round(rota.duration / 60));
+                    rotaBilgi.className = 'alert alert-success py-2 small mb-3';
+                    rotaBilgi.innerHTML = '🚗 <strong>' + t.AdSoyad + '</strong> → arıza: <strong>' + km + ' km</strong> · yaklaşık <strong>' + dk + ' dk</strong>';
+                } catch {
+                    rotaKatmani = L.polyline([[t.Enlem, t.Boylam], arizaKonum], {
+                        color: '#dc3545', weight: 4, dashArray: '8 8'
+                    }).addTo(harita);
+
+                    harita.fitBounds(rotaKatmani.getBounds(), { padding: [40, 40] });
+
+                    rotaBilgi.className = 'alert alert-warning py-2 small mb-3';
+                    rotaBilgi.textContent = '⚠️ Rota servisine ulaşılamadı, kuş uçuşu çizgi gösteriliyor (' + t.Mesafe.toFixed(1) + ' km).';
+                }
+            }
+
+            document.querySelectorAll('#teknisyenListe [data-index]').forEach(b => {
+                b.addEventListener('click', () => rotaCiz(Number(b.dataset.index)));
+            });
+
+            if (teknisyenler.length > 0) {
+                rotaCiz(@seciliIndex);
+            } else {
+                rotaBilgi.textContent = 'Konumu olan teknisyen yok.';
+            }
+        </script>
+    }
+}

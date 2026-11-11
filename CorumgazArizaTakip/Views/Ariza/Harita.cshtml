@@ -1,0 +1,112 @@
+﻿@{
+    ViewData["Title"] = "Arıza Haritası";
+}
+
+<div class="d-flex flex-wrap justify-content-between align-items-center gap-3 mb-4">
+    <div>
+        <h3 class="fw-bold mb-1">🗺️ Arıza Haritası</h3>
+        <p class="text-muted mb-0">Çorum'daki tüm arızalar ve ekiplerin anlık durumu.</p>
+    </div>
+    <a asp-action="Index" class="btn btn-outline-secondary px-4">← Listeye dön</a>
+</div>
+
+<div class="card border-0 shadow-sm mb-3">
+    <div class="card-body py-2 d-flex flex-wrap gap-3 small">
+        <span class="fw-semibold">Arızalar:</span>
+        <span><span class="d-inline-block rounded-circle me-1" style="width:12px;height:12px;background:#dc3545"></span>Acil</span>
+        <span><span class="d-inline-block rounded-circle me-1" style="width:12px;height:12px;background:#6c757d"></span>Bekliyor</span>
+        <span><span class="d-inline-block rounded-circle me-1" style="width:12px;height:12px;background:#ffc107"></span>Yolda</span>
+        <span><span class="d-inline-block rounded-circle me-1" style="width:12px;height:12px;background:#198754"></span>Çözüldü</span>
+        <span class="fw-semibold ms-3">Ekipler:</span>
+        <span><span class="d-inline-block rounded me-1" style="width:12px;height:12px;background:#0d6efd"></span>Müsait</span>
+        <span><span class="d-inline-block rounded me-1" style="width:12px;height:12px;background:#6f42c1"></span>Görevde</span>
+    </div>
+</div>
+
+<div class="card border-0 shadow-sm">
+    <div class="card-body p-2">
+        <div id="harita" class="rounded-3" style="height: 600px;"></div>
+    </div>
+</div>
+
+@section Styles {
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+}
+
+@section Scripts {
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script>
+        const arizalar = @Html.Raw(ViewBag.Arizalar);
+        const teknisyenler = @Html.Raw(ViewBag.TeknisyenKonumlari);
+
+        const harita = L.map('harita').setView([40.5503, 34.9564], 13);
+
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            maxZoom: 19,
+            attribution: '&copy; OpenStreetMap'
+        }).addTo(harita);
+
+        function renk(a) {
+            if (a.oncelik === 'Acil' && a.durum !== 'Çözüldü') return '#dc3545';
+            if (a.durum === 'Yolda') return '#ffc107';
+            if (a.durum === 'Çözüldü') return '#198754';
+            return '#6c757d';
+        }
+
+        function guvenli(metin) {
+            const div = document.createElement('div');
+            div.textContent = metin ?? '';
+            return div.innerHTML;
+        }
+
+        function ekipIkonu(musait) {
+            const r = musait ? '#0d6efd' : '#6f42c1';
+            return L.divIcon({
+                className: '',
+                html: '<div style="background:' + r + ';color:#fff;border:2px solid #fff;border-radius:8px;' +
+                    'width:30px;height:30px;display:flex;align-items:center;justify-content:center;' +
+                    'box-shadow:0 2px 6px rgba(0,0,0,.35);font-size:16px;">👷</div>',
+                iconSize: [30, 30],
+                iconAnchor: [15, 15]
+            });
+        }
+
+        const noktalar = [];
+
+        arizalar.forEach(a => {
+            const nokta = [a.enlem, a.boylam];
+            noktalar.push(nokta);
+
+            L.circleMarker(nokta, {
+                radius: 10,
+                color: '#fff',
+                weight: 2,
+                fillColor: renk(a),
+                fillOpacity: 0.95
+            }).addTo(harita).bindPopup(
+                '<strong>' + guvenli(a.musteri) + '</strong><br>' +
+                guvenli(a.tur) + '<br>' +
+                'Durum: ' + guvenli(a.durum) + '<br>' +
+                'Ekip: ' + guvenli(a.teknisyen) + '<br>' +
+                '<a href="/Ariza/Details/' + a.id + '">Detaya git →</a>'
+            );
+        });
+
+        teknisyenler.forEach(t => {
+            const nokta = [t.enlem, t.boylam];
+            noktalar.push(nokta);
+
+            L.marker(nokta, { icon: ekipIkonu(t.musait) })
+                .addTo(harita)
+                .bindPopup(
+                    '<strong>' + guvenli(t.ad) + '</strong><br>' +
+                    'Bölge: ' + guvenli(t.bolge) + '<br>' +
+                    (t.musait ? '✅ Müsait' : '🚗 Görevde')
+                );
+        });
+
+        if (noktalar.length > 0) {
+            harita.fitBounds(noktalar, { padding: [40, 40], maxZoom: 15 });
+        }
+    </script>
+}

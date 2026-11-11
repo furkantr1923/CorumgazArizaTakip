@@ -1,0 +1,44 @@
+﻿@{
+    ViewData["Title"] = "Personel Girişi";
+}
+
+<div class="row justify-content-center align-items-center" style="min-height: 60vh;">
+    <div class="col-md-6 col-lg-4">
+        <div class="text-center mb-4">
+            <div class="display-4">🔐</div>
+            <h3 class="fw-bold mt-2">Personel Girişi</h3>
+            <p class="text-muted">Arıza yönetim paneline erişmek için giriş yap.</p>
+        </div>
+
+        <div class="card border-0 shadow-sm">
+            <div class="card-body p-4 p-md-5">
+                @if (ViewBag.Hata != null)
+                {
+                    <div class="alert alert-danger py-2 small">⚠️ @ViewBag.Hata</div>
+                }
+
+                <form method="post" asp-action="Login">
+                    <input type="hidden" name="returnUrl" value="@ViewBag.ReturnUrl" />
+
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold">Kullanıcı Adı</label>
+                        <input type="text" name="kullaniciAdi" value="@ViewBag.KullaniciAdi" class="form-control form-control-lg"
+                               placeholder="kullanıcı adı" autocomplete="username" required autofocus />
+                    </div>
+                    <div class="mb-4">
+                        <label class="form-label fw-semibold">Şifre</label>
+                        <input type="password" name="sifre" class="form-control form-control-lg"
+                               placeholder="••••••••" autocomplete="current-password" required />
+                    </div>
+                    <button type="submit" class="btn btn-primary btn-lg w-100">Giriş Yap</button>
+                </form>
+            </div>
+        </div>
+
+        <div class="text-center mt-3">
+            <a asp-controller="Bildirim" asp-action="Create" class="text-muted small">
+                Müşteri misiniz? Arıza bildirin →
+            </a>
+        </div>
+    </div>
+</div>
