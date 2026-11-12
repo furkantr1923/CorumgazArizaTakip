@@ -1,11 +1,13 @@
-# 🔧 Çorumgaz Arıza Takip
+# 🔧 Arıza Takip · Doğal Gaz Arıza Yönetim Sistemi
 
 Doğal gaz dağıtım şirketleri için geliştirilmiş, **harita tabanlı arıza bildirim ve ekip yönetim sistemi**.
 Müşteri haritadan konumunu seçerek arıza bildirir, sistem en yakın müsait ekibi otomatik atar, personel arızayı gerçek yol rotasıyla takip eder.
 
 Proje iki parçadan oluşur: **ASP.NET Core MVC web uygulaması** ve **.NET MAUI Android uygulaması**.
 
-> ⚠️ Bu proje bir **portfolyo / demo** çalışmasıdır. Çorumgaz'ın resmi sistemi değildir. Gerçek doğal gaz arızası veya gaz kokusu için **187**'yi arayın.
+> 💼 Çorumgaz'a yazılım mühendisi başvurusu için hazırlanmış bağımsız bir portfolyo projesidir. Şirketle resmî bir bağı yoktur.
+>
+> ⚠️ Bu bir **demo** çalışmasıdır, resmî bir sistem değildir. Gerçek doğal gaz arızası veya gaz kokusu için **187**'yi arayın.
 
 ## 📱 Mobil uygulama (Android)
 
