@@ -11,10 +11,7 @@ Proje iki parçadan oluşur: **ASP.NET Core MVC web uygulaması** ve **.NET MAUI
 
 ## 📱 Mobil uygulama (Android)
 
-👉 **[APK'yı indir](https://github.com/furkantr1923/CorumgazArizaTakip/releases/latest)**
-
-Kurulum: APK'yı indir → aç → "Bilinmeyen kaynaklara izin ver" → Yükle
-Demo personel girişi: `admin` / `demo123`
+📩 APK, talep üzerine paylaşılmaktadır. Kaynak kodu `ArizaTakipMobil` klasöründedir.
 
 - 📍 Haritaya dokunarak ya da GPS ile konum seçme, adresin otomatik dolması
 - 🤖 Uzmanlık ve mesafeye göre **otomatik ekip atama**
