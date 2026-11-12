@@ -1,0 +1,364 @@
+@page "/bildir"
+@inject VeriServisi Veri
+@inject CihazServisi Cihaz
+@inject AyarServisi Ayar
+@inject NavigationManager Nav
+@inject IJSRuntime JS
+@implements IDisposable
+
+@if (tur == "Gaz kaçağı")
+{
+    <div class="m-acil-kenar"></div>
+}
+
+<h1 class="m-baslik" tabindex="-1">📝 Arıza Bildir</h1>
+
+@if (tur == "Gaz kaçağı")
+{
+    <div class="m-kirmizi-uyari">
+        🚨 <b>ACİL MOD · Gaz kokusu alıyorsan:</b> elektrik düğmelerine dokunma, ateş yakma, pencereleri aç, ana vanayı kapat
+        ve hemen <a href="tel:187">187</a>’yi ara. Bu uygulama bir demodur.
+    </div>
+}
+
+<div class="m-kart">
+    <div class="m-etiket">Ad Soyad</div>
+    <input class="m-girdi" @bind="adSoyad" placeholder="Örn. Ali Veli" />
+
+    <div class="m-etiket">Telefon</div>
+    <input class="m-girdi" type="tel" @bind="telefon" placeholder="05xx xxx xx xx" />
+
+    <div class="m-etiket">Arıza türü</div>
+    <select class="m-girdi" @bind="tur" @bind:after="TurDegisti">
+        <option value="">Seçiniz</option>
+        @foreach (var t in VeriServisi.ArizaTurleri)
+        {
+            <option value="@t">@Gorunum.TurIkon(t) @t</option>
+        }
+    </select>
+
+    <div class="m-etiket">Öncelik</div>
+    <div class="m-ikili">
+        <button type="button" class="m-secim @(oncelik == "Normal" ? "aktif" : "")" @onclick="@(() => OncelikSec("Normal"))">Normal</button>
+        <button type="button" class="m-secim acil @(oncelik == "Acil" ? "aktif" : "")" @onclick="@(() => OncelikSec("Acil"))">🚨 Acil</button>
+    </div>
+
+    <div class="m-etiket">
+        <span>Açıklama (isteğe bağlı)</span>
+        <button type="button" class="m-kucuk-buton @(dinleniyor ? "dinliyor" : "")" @onclick="SesleYaz" disabled="@dinleniyor">
+            @(dinleniyor ? "🎙️ Dinleniyor..." : "🎙️ Sesle yaz")
+        </button>
+    </div>
+    <textarea class="m-girdi" rows="3" @bind="aciklama" placeholder="Ne oldu? Yaz ya da 🎙️ ile konuş."></textarea>
+    @if (sesMesaji != null)
+    {
+        <div class="m-bilgi-kutu">@sesMesaji</div>
+    }
+</div>
+
+<div class="m-kart">
+    <div class="m-kart-baslik"><span>📸 Fotoğraf (isteğe bağlı)</span></div>
+    <div class="m-buton-satiri">
+        <button type="button" class="m-kucuk-buton" @onclick="@(() => FotoEkle(true))">📷 Fotoğraf çek</button>
+        <button type="button" class="m-kucuk-buton" @onclick="@(() => FotoEkle(false))">🖼️ Galeriden seç</button>
+    </div>
+    @if (fotoVerisi != null)
+    {
+        <div class="m-foto">
+            <img src="@fotoVerisi" alt="Arıza fotoğrafı" />
+            <button type="button" @onclick="FotoKaldir">✕</button>
+        </div>
+    }
+    @if (fotoMesaji != null)
+    {
+        <div class="m-bilgi-kutu">@fotoMesaji</div>
+    }
+</div>
+
+<div class="m-kart">
+    <div class="m-kart-baslik">
+        <span>📍 Arıza konumu</span>
+        <button type="button" class="m-kucuk-buton" @onclick="KonumumuBul" disabled="@konumAraniyor">
+            @(konumAraniyor ? "Aranıyor..." : "🎯 Konumumu bul")
+        </button>
+    </div>
+
+    <div id="secimHaritasi" class="m-harita"></div>
+
+    <small style="color:var(--soluk)">
+        @if (enlem == null || boylam == null)
+        {
+            <text>Haritaya dokunarak arıza yerini işaretle, adres otomatik dolsun.</text>
+        }
+        else
+        {
+            <text>✔ Konum seçildi: @enlem.Value.ToString("0.0000"), @boylam.Value.ToString("0.0000")</text>
+        }
+    </small>
+    @if (konumHatasi != null)
+    {
+        <div class="m-hatalar" style="margin-top:8px">@konumHatasi</div>
+    }
+
+    <div class="m-etiket">
+        <span>Adres</span>
+        @if (adresAraniyor)
+        {
+            <small style="color:var(--soluk)">🔄 Adres bulunuyor...</small>
+        }
+        else if (adresOtomatik)
+        {
+            <small style="color:var(--yesil)">✨ Otomatik dolduruldu</small>
+        }
+    </div>
+    <textarea class="m-girdi" rows="2" @bind="adres" @bind:after="AdresElleDegisti" placeholder="Mahalle, sokak, bina ve daire no"></textarea>
+</div>
+
+<label class="m-onay">
+    <input type="checkbox" @bind="kvkk" />
+    <span>Ad, telefon, adres, fotoğraf ve konum bilgimin yalnızca arıza kaydı için işlenmesini kabul ediyorum (KVKK). Veriler bu telefonda saklanır.</span>
+</label>
+
+@if (hatalar.Count > 0)
+{
+    <div class="m-hatalar">
+        @foreach (var h in hatalar)
+        {
+            <div>• @h</div>
+        }
+    </div>
+}
+
+<button class="m-ana-buton" @onclick="Gonder" disabled="@gonderiliyor">
+    @(gonderiliyor ? "Gönderiliyor..." : "Arızayı Bildir 🚀")
+</button>
+
+@code {
+    private string adSoyad = "", telefon = "", adres = "", tur = "", oncelik = "Normal", aciklama = "";
+    private double? enlem, boylam;
+    private bool kvkk, gonderiliyor, konumAraniyor, dinleniyor, adresAraniyor, adresOtomatik;
+    private string? konumHatasi, sesMesaji, fotoMesaji, fotoYolu, fotoVerisi;
+    private readonly List<string> hatalar = new();
+    private DotNetObjectReference<Bildir>? nesneRef;
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            nesneRef = DotNetObjectReference.Create(this);
+            await JS.InvokeVoidAsync("arizaHarita.secim", "secimHaritasi", nesneRef, null, null);
+        }
+    }
+
+    // harita.js haritaya dokunulunca bunu çağırır
+    [JSInvokable]
+    public async Task KonumSecildi(double lat, double lng)
+    {
+        await InvokeAsync(async () =>
+        {
+            enlem = lat;
+            boylam = lng;
+            konumHatasi = null;
+            Cihaz.Tik();
+            StateHasChanged();
+            await AdresDoldur();
+            StateHasChanged();
+        });
+    }
+
+    // ---------- Acil mod ----------
+
+    private async Task TurDegisti()
+    {
+        if (tur == "Gaz kaçağı")
+        {
+            oncelik = "Acil";
+            Cihaz.AcilTitresim();
+            await Efekt.Ses(JS, Ayar, "siren");
+        }
+        else
+        {
+            Cihaz.Tik();
+        }
+    }
+
+    private async Task OncelikSec(string secim)
+    {
+        oncelik = secim;
+        if (secim == "Acil")
+        {
+            Cihaz.AcilTitresim();
+            await Efekt.Ses(JS, Ayar, "uyari");
+        }
+        else
+        {
+            Cihaz.Tik();
+        }
+    }
+
+    // ---------- Sesle yazma ----------
+
+    private async Task SesleYaz()
+    {
+        sesMesaji = null;
+        if (!Cihaz.AndroidMi)
+        {
+            sesMesaji = "🎙️ Sesle yazma telefonda çalışır.";
+            return;
+        }
+
+        dinleniyor = true;
+        Cihaz.Tik();
+        StateHasChanged();
+
+        var metin = await Cihaz.SesliDinle();
+        dinleniyor = false;
+
+        if (string.IsNullOrWhiteSpace(metin))
+        {
+            sesMesaji = "Ses anlaşılamadı ya da mikrofon izni verilmedi. Tekrar dene.";
+        }
+        else
+        {
+            aciklama = (aciklama + " " + metin).Trim();
+            await Efekt.Ses(JS, Ayar, "bildirim");
+        }
+    }
+
+    // ---------- Fotoğraf ----------
+
+    private async Task FotoEkle(bool kamera)
+    {
+        fotoMesaji = null;
+        Cihaz.Tik();
+        var yol = await Cihaz.FotoAl(kamera);
+        if (yol == null)
+        {
+            fotoMesaji = kamera
+                ? "Fotoğraf çekilmedi (kamera izni gerekebilir)."
+                : "Fotoğraf seçilmedi.";
+            return;
+        }
+
+        Cihaz.FotoSil(fotoYolu);
+        fotoYolu = yol;
+        fotoVerisi = await Cihaz.FotoVerisi(yol);
+    }
+
+    private void FotoKaldir()
+    {
+        Cihaz.FotoSil(fotoYolu);
+        fotoYolu = null;
+        fotoVerisi = null;
+        Cihaz.Tik();
+    }
+
+    // ---------- Konum ve adres ----------
+
+    private async Task KonumumuBul()
+    {
+        konumAraniyor = true;
+        konumHatasi = null;
+        try
+        {
+            var konum = await Geolocation.Default.GetLocationAsync(
+                new GeolocationRequest(GeolocationAccuracy.Medium, TimeSpan.FromSeconds(10)));
+
+            if (konum != null)
+            {
+                enlem = konum.Latitude;
+                boylam = konum.Longitude;
+                await JS.InvokeVoidAsync("arizaHarita.isaretTasi", "secimHaritasi", enlem, boylam);
+                Cihaz.Tik();
+                await AdresDoldur();
+            }
+            else
+            {
+                konumHatasi = "Konum alınamadı. Haritaya dokunarak seçebilirsin.";
+            }
+        }
+        catch (Exception)
+        {
+            konumHatasi = "Konum izni verilmedi ya da GPS kapalı. Haritaya dokunarak seçebilirsin.";
+        }
+        finally
+        {
+            konumAraniyor = false;
+        }
+    }
+
+    private async Task AdresDoldur()
+    {
+        if (enlem == null || boylam == null) return;
+        if (!string.IsNullOrWhiteSpace(adres) && !adresOtomatik) return;   // elle yazılan adresin üstüne yazma
+
+        adresAraniyor = true;
+        StateHasChanged();
+
+        var bulunan = await Cihaz.AdresBul(enlem.Value, boylam.Value);
+        adresAraniyor = false;
+
+        if (!string.IsNullOrWhiteSpace(bulunan))
+        {
+            adres = bulunan;
+            adresOtomatik = true;
+        }
+    }
+
+    private void AdresElleDegisti() => adresOtomatik = false;
+
+    // ---------- Gönder ----------
+
+    private async Task Gonder()
+    {
+        Cihaz.Tik();
+        hatalar.Clear();
+        var rakamlar = new string(telefon.Where(char.IsDigit).ToArray());
+
+        if (adSoyad.Trim().Length < 3) hatalar.Add("Ad soyad en az 3 harf olmalı.");
+        if (rakamlar.Length < 10) hatalar.Add("Geçerli bir telefon numarası gir (en az 10 rakam).");
+        if (string.IsNullOrEmpty(tur)) hatalar.Add("Arıza türünü seç.");
+        if (enlem == null || boylam == null) hatalar.Add("Haritadan arıza konumunu seç.");
+        if (adres.Trim().Length < 5) hatalar.Add("Adresi biraz daha detaylı yaz.");
+        if (!kvkk) hatalar.Add("Devam etmek için KVKK onayı gerekli.");
+
+        if (hatalar.Count > 0)
+        {
+            Cihaz.UzunTitre();
+            await Efekt.Ses(JS, Ayar, "uyari");
+            return;
+        }
+
+        gonderiliyor = true;
+        await Cihaz.BildirimIzniIste();
+
+        var ariza = new Ariza
+        {
+            AdSoyad = adSoyad.Trim(),
+            Telefon = telefon.Trim(),
+            Adres = adres.Trim(),
+            ArizaTuru = tur,
+            Oncelik = oncelik,
+            Aciklama = aciklama.Trim(),
+            Enlem = enlem!.Value,
+            Boylam = boylam!.Value,
+            FotoYolu = fotoYolu
+        };
+
+        var kayit = await Veri.BildirimEkle(ariza);
+        fotoYolu = null;   // kayda bağlandı, sayfa kapanınca silinmesin
+
+        var ekip = await Veri.TeknisyenGetir(kayit.TeknisyenId);
+        Cihaz.BildirimGoster("✅ Bildiriminiz alındı",
+            ekip == null ? kayit.TakipKodu : $"{kayit.TakipKodu} · Atanan ekip: {ekip.AdSoyad}");
+
+        Nav.NavigateTo($"sonuc/{kayit.TakipKodu}");
+    }
+
+    public void Dispose()
+    {
+        // Gönderilmeden çıkılırsa çekilen fotoğrafı sil
+        Cihaz.FotoSil(fotoYolu);
+        nesneRef?.Dispose();
+    }
+}

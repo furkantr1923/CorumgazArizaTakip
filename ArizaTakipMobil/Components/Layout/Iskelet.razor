@@ -1,0 +1,27 @@
+@* Veri yüklenirken gösterilen parlayan gri kutular *@
+@if (Istatistik)
+{
+    <div class="m-iskelet-izgara">
+        @for (var i = 0; i < 4; i++)
+        {
+            <div class="m-iskelet kutu"></div>
+        }
+    </div>
+}
+
+@for (var i = 0; i < Adet; i++)
+{
+    <div class="m-iskelet-kart">
+        <div class="m-iskelet daire"></div>
+        <div style="flex:1">
+            <div class="m-iskelet satir" style="width:55%"></div>
+            <div class="m-iskelet satir" style="width:85%"></div>
+            <div class="m-iskelet satir" style="width:40%"></div>
+        </div>
+    </div>
+}
+
+@code {
+    [Parameter] public int Adet { get; set; } = 3;
+    [Parameter] public bool Istatistik { get; set; }
+}

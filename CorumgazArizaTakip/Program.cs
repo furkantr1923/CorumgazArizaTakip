@@ -1,3 +1,4 @@
+using System.Diagnostics;
 using System.Globalization;
 using System.Text.Encodings.Web;
 using System.Text.Unicode;
@@ -88,7 +89,7 @@ using (var scope = app.Services.CreateScope())
 
         if (string.IsNullOrWhiteSpace(kullaniciAdi) || string.IsNullOrWhiteSpace(sifre))
         {
-            logger.LogWarning("İlk admin oluşturulmadı. 'IlkAdmin:KullaniciAdi' ve 'IlkAdmin:Sifre' ayarlarını Kullanıcı Gizli Anahtarları'na ekleyin.");
+            logger.LogWarning("İlk admin oluşturulmadı. 'IlkAdmin:KullaniciAdi' ve 'IlkAdmin:Sifre' ayarlarını ekleyin.");
         }
         else
         {
@@ -118,6 +119,30 @@ using (var scope = app.Services.CreateScope())
         );
         db.SaveChanges();
     }
+}
+
+// Exe sürümünde (Visual Studio dışında) program açılınca tarayıcıyı kendiliğinden aç
+if (!app.Environment.IsDevelopment())
+{
+    app.Lifetime.ApplicationStarted.Register(() =>
+    {
+        var adres = app.Urls.FirstOrDefault() ?? "http://localhost:5000";
+        Console.WriteLine();
+        Console.WriteLine("==============================================");
+        Console.WriteLine("  Çorumgaz Arıza Takip çalışıyor");
+        Console.WriteLine($"  Adres: {adres}");
+        Console.WriteLine("  Kapatmak için bu pencereyi kapatın.");
+        Console.WriteLine("==============================================");
+
+        try
+        {
+            Process.Start(new ProcessStartInfo(adres) { UseShellExecute = true });
+        }
+        catch
+        {
+            // Tarayıcı açılamazsa kullanıcı adresi kendisi yazar.
+        }
+    });
 }
 
 app.Run();

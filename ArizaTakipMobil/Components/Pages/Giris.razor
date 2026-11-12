@@ -1,0 +1,108 @@
+@page "/giris"
+@inject OturumServisi Oturum
+@inject CihazServisi Cihaz
+@inject AyarServisi Ayar
+@inject NavigationManager Nav
+@inject IJSRuntime JS
+
+<div class="m-giris">
+    <div class="m-giris-ikon">👷</div>
+    <h1 tabindex="-1">Personel Girişi</h1>
+    <p>Arızaları, haritayı ve ekipleri yönetmek için giriş yap.</p>
+</div>
+
+<div class="m-kart">
+    @if (parmakIziVar)
+    {
+        <button class="m-ana-buton mavi" @onclick="ParmakIziIleGiris" disabled="@dogrulaniyor">
+            <span class="m-parmak-izi">👆</span> @(dogrulaniyor ? "Parmak izi bekleniyor..." : "Parmak izi ile giriş")
+        </button>
+        <div class="m-not" style="padding:2px 0 8px">ya da şifre ile</div>
+    }
+
+    <div class="m-etiket">Kullanıcı adı</div>
+    <input class="m-girdi" @bind="kullanici" autocapitalize="off" autocomplete="off" placeholder="Kullanıcı adı" />
+
+    <div class="m-etiket">Şifre</div>
+    <input class="m-girdi" type="password" @bind="sifre" @bind:event="oninput" @onkeydown="Tus" placeholder="Şifre" />
+
+    @if (hata != null)
+    {
+        <div class="m-hatalar" style="margin-top:12px">@hata</div>
+    }
+
+    <div style="height:14px"></div>
+    <button class="m-ana-buton" @onclick="GirisYap">Giriş Yap</button>
+</div>
+
+<div class="m-demo-kutu">
+    <b>🧪 Demo hesabı</b>
+    <div>Kullanıcı: <code>@OturumServisi.DemoKullanici</code> · Şifre: <code>@OturumServisi.DemoSifre</code></div>
+    <button class="m-kucuk-buton" @onclick="Doldur">Bilgileri doldur</button>
+</div>
+
+@code {
+    private string kullanici = "", sifre = "";
+    private string? hata;
+    private bool parmakIziVar, dogrulaniyor;
+
+    protected override void OnInitialized()
+    {
+        if (Oturum.GirisYapti)
+        {
+            Nav.NavigateTo("panel");
+            return;
+        }
+        parmakIziVar = Cihaz.ParmakIziDestekleniyor;
+    }
+
+    private void Doldur()
+    {
+        kullanici = OturumServisi.DemoKullanici;
+        sifre = OturumServisi.DemoSifre;
+        hata = null;
+        Cihaz.Tik();
+    }
+
+    private async Task Tus(KeyboardEventArgs e)
+    {
+        if (e.Key == "Enter") await GirisYap();
+    }
+
+    private async Task GirisYap()
+    {
+        if (Oturum.Giris(kullanici, sifre))
+        {
+            Cihaz.Tik();
+            await Efekt.Ses(JS, Ayar, "basari");
+            Nav.NavigateTo("panel");
+        }
+        else
+        {
+            hata = "Kullanıcı adı veya şifre hatalı.";
+            Cihaz.UzunTitre();
+            await Efekt.Ses(JS, Ayar, "uyari");
+        }
+    }
+
+    private async Task ParmakIziIleGiris()
+    {
+        hata = null;
+        dogrulaniyor = true;
+        StateHasChanged();
+
+        var basarili = await Cihaz.ParmakIziDogrula();
+        dogrulaniyor = false;
+
+        if (basarili)
+        {
+            Oturum.BiyometrikGiris();
+            await Efekt.Ses(JS, Ayar, "basari");
+            Nav.NavigateTo("panel");
+        }
+        else
+        {
+            hata = "Parmak izi doğrulanamadı. Şifre ile giriş yapabilirsin.";
+        }
+    }
+}

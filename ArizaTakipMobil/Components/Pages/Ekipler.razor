@@ -1,0 +1,83 @@
+@page "/ekipler"
+@inject VeriServisi Veri
+@inject OturumServisi Oturum
+@inject CihazServisi Cihaz
+@inject NavigationManager Nav
+
+@if (Oturum.GirisYapti)
+{
+    <PanelMenu />
+
+    @if (!hazir)
+    {
+        <Iskelet Adet="4" />
+    }
+    else
+    {
+        <div class="m-istatistik" style="grid-template-columns:repeat(3, 1fr)">
+            <div><b>@ekipler.Count</b><small>Toplam ekip</small></div>
+            <div><b>@(ekipler.Count(e => e.Musait))</b><small>✅ Müsait</small></div>
+            <div><b>@(ekipler.Count(e => !e.Musait))</b><small>🚐 Görevde</small></div>
+        </div>
+
+        @foreach (var t in ekipler.OrderByDescending(e => e.Musait).ThenBy(e => e.AdSoyad))
+        {
+            <div class="m-ekip-kart">
+                <div class="m-ekip-satir">
+                    <div class="m-avatar @(t.Musait ? "" : "gri")">@t.AdSoyad.Substring(0, 1)</div>
+                    <div>
+                        <b>@t.AdSoyad</b>
+                        <small>@t.Uzmanlik · @t.Bolge bölgesi</small>
+                    </div>
+                    <span class="m-rozet @(t.Musait ? "musait" : "gorevde")">@(t.Musait ? "Müsait" : "Görevde")</span>
+                </div>
+                <div class="m-ekip-alt">
+                    <small>📋 Açık: @AcikIs(t.Id) · ✅ Çözülen: @CozulenIs(t.Id) · @PuanMetni(t.Id)</small>
+                    <button class="m-kucuk-buton" @onclick="@(() => Degistir(t.Id))">
+                        @(t.Musait ? "Görevde yap" : "Müsait yap")
+                    </button>
+                </div>
+            </div>
+        }
+    }
+}
+
+@code {
+    private List<Teknisyen> ekipler = new();
+    private List<Ariza> arizalar = new();
+    private bool hazir;
+
+    protected override async Task OnInitializedAsync()
+    {
+        if (!Oturum.GirisYapti)
+        {
+            Nav.NavigateTo("giris");
+            return;
+        }
+        await Task.Delay(300);   // iskelet animasyonu kısa süre görünsün
+        await Yukle();
+    }
+
+    private async Task Yukle()
+    {
+        ekipler = await Veri.Teknisyenler();
+        arizalar = await Veri.Arizalar();
+        hazir = true;
+    }
+
+    private int AcikIs(int id) => arizalar.Count(a => a.TeknisyenId == id && a.Durum != "Çözüldü");
+    private int CozulenIs(int id) => arizalar.Count(a => a.TeknisyenId == id && a.Durum == "Çözüldü");
+
+    private string PuanMetni(int id)
+    {
+        var puanlar = arizalar.Where(a => a.TeknisyenId == id && a.Puan != null).Select(a => a.Puan!.Value).ToList();
+        return puanlar.Count == 0 ? "⭐ —" : $"⭐ {puanlar.Average():0.0}";
+    }
+
+    private async Task Degistir(int id)
+    {
+        Cihaz.Tik();
+        await Veri.MusaitlikDegistir(id);
+        await Yukle();
+    }
+}

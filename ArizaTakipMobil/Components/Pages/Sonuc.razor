@@ -1,0 +1,135 @@
+@page "/sonuc/{Kod}"
+@inject VeriServisi Veri
+@inject CihazServisi Cihaz
+@inject AyarServisi Ayar
+@inject IJSRuntime JS
+
+@if (yukleniyor)
+{
+    <Iskelet Adet="2" />
+}
+else if (ariza == null)
+{
+    <div class="m-kart">
+        Kayıt bulunamadı.
+        <a href="">Ana sayfaya dön</a>
+    </div>
+}
+else
+{
+    <div class="m-basari">
+        <div class="m-basari-ikon">✅</div>
+        <h1 tabindex="-1">Bildirimin alındı</h1>
+        <p>Takip kodunu sakla, arızanın durumunu bununla sorgulayabilirsin.</p>
+        <div class="m-kod">@ariza.TakipKodu</div>
+        <div class="m-buton-satiri" style="max-width:340px;margin:0 auto">
+            <button class="m-kucuk-buton" @onclick="Kopyala">@(kopyalandi ? "✔ Kopyalandı" : "📋 Kopyala")</button>
+            <button class="m-kucuk-buton" @onclick="Paylas">📤 Paylaş</button>
+        </div>
+    </div>
+
+    @if (ekip != null)
+    {
+        <div class="m-kart">
+            <div class="m-kart-baslik">👷 Otomatik atanan ekip</div>
+            <div class="m-ekip-satir">
+                <div class="m-avatar">@ekip.AdSoyad.Substring(0, 1)</div>
+                <div>
+                    <b>@ekip.AdSoyad</b>
+                    <small>@ekip.Uzmanlik · @ekip.Bolge bölgesi</small>
+                </div>
+            </div>
+
+            <div class="m-bilgi-izgara">
+                <div>
+                    <small>@(rota?.Gercek == true ? "Yol mesafesi" : "Mesafe")</small>
+                    <b>@((rota?.MesafeKm ?? mesafe).ToString("0.0")) km</b>
+                </div>
+                <div>
+                    <small>Tahmini varış</small>
+                    <b>@(rota?.Gercek == true ? $"~{Math.Ceiling(rota.SureDk) + 5} dk" : Gorunum.TahminiVaris(mesafe))</b>
+                </div>
+            </div>
+
+            <div id="sonucHaritasi" class="m-harita kucuk"></div>
+            <small style="color:var(--soluk)">Mavi çizgi: ekibin gerçek yol rotası</small>
+        </div>
+    }
+
+    <a class="m-ana-buton" href="@($"sorgu/{ariza.TakipKodu}")">🔎 Durumu takip et</a>
+    <a class="m-ikincil-buton" href="">Ana sayfaya dön</a>
+}
+
+@code {
+    [Parameter] public string Kod { get; set; } = "";
+
+    private Ariza? ariza;
+    private Teknisyen? ekip;
+    private RotaOzet? rota;
+    private double mesafe;
+    private bool yukleniyor = true, kopyalandi, ciz, kutla;
+
+    protected override async Task OnParametersSetAsync()
+    {
+        ariza = await Veri.KodIleBul(Kod);
+        if (ariza != null)
+        {
+            ekip = await Veri.TeknisyenGetir(ariza.TeknisyenId);
+            if (ekip != null)
+                mesafe = VeriServisi.MesafeKm(ariza.Enlem, ariza.Boylam, ekip.Enlem, ekip.Boylam);
+            kutla = true;
+        }
+        yukleniyor = false;
+        ciz = ekip != null;
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (kutla)
+        {
+            kutla = false;
+            Cihaz.UzunTitre();
+            await Efekt.Konfeti(JS);
+            await Efekt.Ses(JS, Ayar, "basari");
+        }
+
+        if (!ciz || ariza == null || ekip == null) return;
+        ciz = false;
+
+        var noktalar = new List<object> { HaritaYardimci.ArizaNoktasi(ariza, false), HaritaYardimci.EkipNoktasi(ekip) };
+        var cizgiler = new List<object> { HaritaYardimci.Cizgi(ariza, ekip) };
+        try
+        {
+            var ozetler = await HaritaYardimci.CizVeOlc(JS, "sonucHaritasi", noktalar, cizgiler);
+            if (ozetler.Length > 0 && ozetler[0].Gercek)
+            {
+                rota = ozetler[0];
+                StateHasChanged();
+            }
+        }
+        catch { }
+    }
+
+    private async Task Kopyala()
+    {
+        if (ariza == null) return;
+        try
+        {
+            await Clipboard.Default.SetTextAsync(ariza.TakipKodu);
+            kopyalandi = true;
+            Cihaz.Tik();
+        }
+        catch
+        {
+            kopyalandi = false;
+        }
+    }
+
+    private async Task Paylas()
+    {
+        if (ariza == null) return;
+        Cihaz.Tik();
+        await Cihaz.Paylas("Arıza takip kodu",
+            $"Arıza bildirimim alındı ✅\nTakip kodu: {ariza.TakipKodu}\nTür: {ariza.ArizaTuru}\n(Arıza Takip demo uygulaması)");
+    }
+}

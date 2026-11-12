@@ -1,0 +1,107 @@
+@inherits LayoutComponentBase
+@inject OturumServisi Oturum
+@inject AyarServisi Ayar
+@inject CihazServisi Cihaz
+@inject IJSRuntime JS
+@implements IDisposable
+
+@if (acilis)
+{
+    <div class="m-acilis-ekrani @(acilisKapaniyor ? "kapaniyor" : "")">
+        <div class="m-acilis-logo">
+            <div class="halka"></div>
+            <div class="halka iki"></div>
+            <svg viewBox="0 0 456 456" xmlns="http://www.w3.org/2000/svg">
+                <circle cx="228" cy="228" r="150" fill="#14305E" />
+                <path d="M228 330 C 200 290, 143 250, 143 205 A 85 85 0 1 1 313 205 C 313 250, 256 290, 228 330 Z" fill="#F28C28" />
+                <g class="alev">
+                    <path d="M228 145 C 250 175, 272 190, 272 222 C 272 250, 252 268, 228 268 C 204 268, 184 250, 184 222 C 184 200, 198 188, 206 172 C 210 190, 218 196, 226 198 C 222 180, 220 162, 228 145 Z" fill="#FFFFFF" />
+                    <path d="M228 205 C 240 220, 248 230, 248 242 C 248 255, 239 262, 228 262 C 217 262, 208 255, 208 243 C 208 230, 220 222, 228 205 Z" fill="#F28C28" />
+                </g>
+            </svg>
+        </div>
+        <b>Arıza Takip</b>
+        <small>Doğal gaz arıza yönetimi · Demo</small>
+    </div>
+}
+
+<div class="m-uygulama">
+    <header class="m-ust">
+        <div class="m-ust-ic">
+            <a href="" class="m-logo">
+                <svg viewBox="0 0 456 456" xmlns="http://www.w3.org/2000/svg">
+                    <path d="M228 330 C 200 290, 143 250, 143 205 A 85 85 0 1 1 313 205 C 313 250, 256 290, 228 330 Z" transform="translate(-114 -100) scale(1.5)" fill="#F28C28" />
+                    <path d="M228 145 C 250 175, 272 190, 272 222 C 272 250, 252 268, 228 268 C 204 268, 184 250, 184 222 C 184 200, 198 188, 206 172 C 210 190, 218 196, 226 198 C 222 180, 220 162, 228 145 Z" transform="translate(-114 -100) scale(1.5)" fill="#FFFFFF" />
+                </svg>
+                <b>Arıza Takip</b>
+            </a>
+            <div class="m-ust-sag">
+                <button class="m-ust-buton" @onclick="SesDegistir" aria-label="Ses">@(Ayar.SesAcik ? "🔊" : "🔇")</button>
+                <button class="m-ust-buton" @onclick="TemaDegistir" aria-label="Tema">@(Ayar.KaranlikMod ? "☀️" : "🌙")</button>
+                <span class="m-demo-rozet">DEMO</span>
+            </div>
+        </div>
+    </header>
+
+    <div class="m-uyari">
+        Portfolyo projesidir, Çorumgaz’ın resmi uygulaması değildir · Gerçek gaz kokusu için <a href="tel:187">187</a>
+    </div>
+
+    <main class="m-icerik">
+        @Body
+    </main>
+
+    <nav class="m-alt-menu">
+        <NavLink href="" Match="NavLinkMatch.All" class="m-sekme"><span>🏠</span>Ana Sayfa</NavLink>
+        <NavLink href="bildir" class="m-sekme"><span>📝</span>Bildir</NavLink>
+        <NavLink href="sorgu" class="m-sekme"><span>🔎</span>Sorgula</NavLink>
+        <NavLink href="@(Oturum.GirisYapti ? "panel" : "giris")" class="m-sekme"><span>👷</span>Personel</NavLink>
+    </nav>
+</div>
+
+@code {
+    private bool acilis = true, acilisKapaniyor;
+
+    protected override void OnInitialized()
+    {
+        Oturum.Degisti += Yenile;
+        Ayar.Degisti += Yenile;
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (!firstRender) return;
+
+        try { await JS.InvokeVoidAsync("efekt.tema", Ayar.KaranlikMod); } catch { }
+
+        // Açılış animasyonu: logo düşer, alev titrer, sonra kaybolur
+        await Task.Delay(1500);
+        acilisKapaniyor = true;
+        StateHasChanged();
+        await Task.Delay(450);
+        acilis = false;
+        StateHasChanged();
+    }
+
+    private async Task TemaDegistir()
+    {
+        Cihaz.Tik();
+        Ayar.KaranlikMod = !Ayar.KaranlikMod;
+        try { await JS.InvokeVoidAsync("efekt.tema", Ayar.KaranlikMod); } catch { }
+    }
+
+    private async Task SesDegistir()
+    {
+        Ayar.SesAcik = !Ayar.SesAcik;
+        Cihaz.Tik();
+        await Efekt.Ses(JS, Ayar, "tik");
+    }
+
+    private void Yenile() => InvokeAsync(StateHasChanged);
+
+    public void Dispose()
+    {
+        Oturum.Degisti -= Yenile;
+        Ayar.Degisti -= Yenile;
+    }
+}

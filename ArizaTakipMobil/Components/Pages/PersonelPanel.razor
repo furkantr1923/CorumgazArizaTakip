@@ -1,0 +1,164 @@
+@page "/panel"
+@inject VeriServisi Veri
+@inject OturumServisi Oturum
+@inject CihazServisi Cihaz
+@inject AyarServisi Ayar
+@inject NavigationManager Nav
+@inject IJSRuntime JS
+
+@if (Oturum.GirisYapti)
+{
+    <PanelMenu />
+
+    @if (arizalar == null || ozet == null)
+    {
+        <Iskelet Adet="4" Istatistik="true" />
+    }
+    else
+    {
+        if (yeniAcilSayisi > 0)
+        {
+            <div class="m-alarm">
+                <span>🚨</span>
+                <div>@yeniAcilSayisi yeni ACİL arıza var! Hemen ekip yönlendir.</div>
+            </div>
+        }
+
+        <div class="m-istatistik">
+            <div><b>@ozet.Bekliyor</b><small>⏳ Bekliyor</small></div>
+            <div><b>@ozet.Yolda</b><small>🚐 Yolda</small></div>
+            <div><b>@ozet.Cozuldu</b><small>✅ Çözüldü</small></div>
+            <div><b>@(ozet.OrtalamaCozumDakika is double d ? Gorunum.SureYaz(d) : "—")</b><small>⏱️ Ort. çözüm</small></div>
+        </div>
+
+        <input class="m-girdi" style="margin-bottom:10px" @bind="arama" @bind:event="oninput" placeholder="🔍 Kod, isim, adres veya tür ara" />
+
+        <div class="m-kaydir">
+            @foreach (var f in Filtreler)
+            {
+                <button class="m-cip @(filtre == f ? "aktif" : "")" @onclick="@(() => FiltreSec(f))">@f (@Sayi(f))</button>
+            }
+        </div>
+
+        @if (!Liste.Any())
+        {
+            <div class="m-bos">Bu filtrede arıza yok 🎉</div>
+        }
+
+        @foreach (var a in Liste)
+        {
+            <a class="m-ariza-kart @(a.Oncelik == "Acil" && a.Durum != "Çözüldü" ? "acil-kart" : "")" href="@($"ariza/{a.Id}")">
+                <div class="m-ariza-ikon" style="background:@(Gorunum.DurumRenk(a.Durum))22">@Gorunum.TurIkon(a.ArizaTuru)</div>
+                <div class="m-ariza-govde">
+                    <div class="m-satir">
+                        <b>@a.ArizaTuru</b>
+                        @if (a.Oncelik == "Acil")
+                        {
+                            <span class="m-rozet acil">ACİL</span>
+                        }
+                        @if (!string.IsNullOrEmpty(a.FotoYolu))
+                        {
+                            <span title="Fotoğraf var">📸</span>
+                        }
+                        @if (a.Puan is int puan)
+                        {
+                            <small class="m-yildiz-kucuk">@(new string('★', puan))</small>
+                        }
+                    </div>
+                    <small>@a.TakipKodu · @Gorunum.GecenSure(a.BildirimTarihi)</small>
+                    <small class="m-tek-satir">📍 @a.Adres</small>
+                    <small>👷 @EkipAdi(a.TeknisyenId)</small>
+                </div>
+                <span class="m-rozet @Gorunum.DurumSinif(a.Durum)">@a.Durum</span>
+            </a>
+        }
+    }
+}
+
+@code {
+    private static readonly string[] Filtreler = { "Açık", "Bekliyor", "Yolda", "Çözüldü", "Tümü" };
+
+    private List<Ariza>? arizalar;
+    private Dictionary<int, Teknisyen> ekipler = new();
+    private Ozet? ozet;
+    private string filtre = "Açık";
+    private string arama = "";
+    private int yeniAcilSayisi;
+    private bool alarmCal;
+
+    protected override async Task OnInitializedAsync()
+    {
+        if (!Oturum.GirisYapti)
+        {
+            Nav.NavigateTo("giris");
+            return;
+        }
+
+        var yukleme = Veri.Arizalar();
+        await Task.WhenAll(yukleme, Task.Delay(400));   // iskelet animasyonu kısa süre görünsün
+        arizalar = await yukleme;
+        ekipler = (await Veri.Teknisyenler()).ToDictionary(t => t.Id);
+        ozet = await Veri.OzetGetir();
+
+        // Daha önce gösterilmemiş açık acil arızalar için alarm
+        var yeniAciller = arizalar
+            .Where(a => a.Oncelik == "Acil" && a.Durum == "Bekliyor" && !Oturum.GorulenAciller.Contains(a.Id))
+            .ToList();
+        yeniAcilSayisi = yeniAciller.Count;
+        foreach (var a in yeniAciller) Oturum.GorulenAciller.Add(a.Id);
+        alarmCal = yeniAcilSayisi > 0;
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (!alarmCal) return;
+        alarmCal = false;
+        Cihaz.AcilTitresim();
+        await Efekt.Ses(JS, Ayar, "siren");
+    }
+
+    private void FiltreSec(string f)
+    {
+        filtre = f;
+        Cihaz.Tik();
+    }
+
+    private static bool FiltreyeUyar(Ariza a, string f) => f switch
+    {
+        "Açık" => a.Durum != "Çözüldü",
+        "Tümü" => true,
+        _ => a.Durum == f
+    };
+
+    private int Sayi(string f) => arizalar?.Count(a => FiltreyeUyar(a, f)) ?? 0;
+
+    private IEnumerable<Ariza> Liste
+    {
+        get
+        {
+            if (arizalar == null) return Enumerable.Empty<Ariza>();
+
+            var sorgu = arizalar.Where(a => FiltreyeUyar(a, filtre));
+
+            if (!string.IsNullOrWhiteSpace(arama))
+            {
+                var q = arama.Trim();
+                sorgu = sorgu.Where(a =>
+                    a.TakipKodu.Contains(q, StringComparison.CurrentCultureIgnoreCase) ||
+                    a.AdSoyad.Contains(q, StringComparison.CurrentCultureIgnoreCase) ||
+                    a.Adres.Contains(q, StringComparison.CurrentCultureIgnoreCase) ||
+                    a.ArizaTuru.Contains(q, StringComparison.CurrentCultureIgnoreCase));
+            }
+
+            // Önce açık ve acil olanlar, sonra en yeniler
+            return sorgu
+                .OrderBy(a => a.Durum == "Çözüldü")
+                .ThenByDescending(a => a.Oncelik == "Acil")
+                .ThenByDescending(a => a.BildirimTarihi)
+                .ToList();
+        }
+    }
+
+    private string EkipAdi(int? id) =>
+        id is int x && ekipler.TryGetValue(x, out var t) ? t.AdSoyad : "Atanmadı";
+}

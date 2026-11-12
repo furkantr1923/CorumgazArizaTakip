@@ -1,0 +1,25 @@
+@inject OturumServisi Oturum
+@inject NavigationManager Nav
+
+<div class="m-panel-ust">
+    <div>
+        <small>Personel paneli</small>
+        <b>👤 @Oturum.KullaniciAdi</b>
+    </div>
+    <button class="m-kucuk-buton" @onclick="Cikis">Çıkış</button>
+</div>
+
+<div class="m-segment">
+    <NavLink href="panel" Match="NavLinkMatch.All">📋 Liste</NavLink>
+    <NavLink href="harita" Match="NavLinkMatch.All">🗺️ Harita</NavLink>
+    <NavLink href="grafik" Match="NavLinkMatch.All">📊 Grafik</NavLink>
+    <NavLink href="ekipler" Match="NavLinkMatch.All">👷 Ekipler</NavLink>
+</div>
+
+@code {
+    private void Cikis()
+    {
+        Oturum.Cikis();
+        Nav.NavigateTo("");
+    }
+}

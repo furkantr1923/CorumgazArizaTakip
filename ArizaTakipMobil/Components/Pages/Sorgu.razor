@@ -1,0 +1,231 @@
+@page "/sorgu"
+@page "/sorgu/{Kod}"
+@inject VeriServisi Veri
+@inject CihazServisi Cihaz
+@inject AyarServisi Ayar
+@inject IJSRuntime JS
+
+<h1 class="m-baslik" tabindex="-1">🔎 Durum Sorgula</h1>
+
+<div class="m-kart">
+    <div class="m-etiket">Takip kodu</div>
+    <div class="m-arama-satir">
+        <input class="m-girdi kod" @bind="girdi" @bind:event="oninput" @onkeydown="Tus" placeholder="CRZ-XXXXXX" />
+        <button class="m-buton" @onclick="Ara">Sorgula</button>
+    </div>
+
+    @if (sonKodlar.Count > 0)
+    {
+        <div class="m-cipler">
+            <small>Son kayıtlar:</small>
+            @foreach (var k in sonKodlar)
+            {
+                <button class="m-cip" @onclick="@(() => Sec(k))">@k</button>
+            }
+        </div>
+    }
+</div>
+
+@if (araniyor)
+{
+    <Iskelet Adet="1" />
+}
+
+@if (arandi && sonuc == null && !araniyor)
+{
+    <div class="m-hatalar">❌ Bu koda ait kayıt bulunamadı. Kodu kontrol edip tekrar dene.</div>
+}
+
+@if (sonuc != null && !araniyor)
+{
+    var sira = Array.IndexOf(VeriServisi.Durumlar, sonuc.Durum);
+
+    <div class="m-kart">
+        <div class="m-sonuc-ust">
+            <div>
+                <small>Takip kodu</small>
+                <b class="m-kod-kucuk">@sonuc.TakipKodu</b>
+            </div>
+            <span class="m-rozet @Gorunum.DurumSinif(sonuc.Durum)">@Gorunum.DurumIkon(sonuc.Durum) @sonuc.Durum</span>
+        </div>
+
+        <div class="m-adimlar">
+            @for (var i = 0; i < VeriServisi.Durumlar.Length; i++)
+            {
+                <div class="m-adim @(i <= sira ? "tamam" : "")">
+                    <span>@(i <= sira ? "✓" : (i + 1).ToString())</span>
+                    <small>@VeriServisi.Durumlar[i]</small>
+                </div>
+            }
+        </div>
+
+        <div class="m-satirlar">
+            <div><span>Arıza türü</span><b>@Gorunum.TurIkon(sonuc.ArizaTuru) @sonuc.ArizaTuru</b></div>
+            <div><span>Öncelik</span><b>@sonuc.Oncelik</b></div>
+            <div><span>Bildirim</span><b>@Gorunum.Tarih(sonuc.BildirimTarihi)</b></div>
+            <div><span>Ekip</span><b>@(ekip?.AdSoyad ?? "Atanıyor")</b></div>
+            @if (sonuc.KapanisTarihi is DateTime kapanis)
+            {
+                <div><span>Kapanış</span><b>@Gorunum.Tarih(kapanis)</b></div>
+            }
+            @if (!string.IsNullOrWhiteSpace(sonuc.CozumNotu) && sonuc.Durum == "Çözüldü")
+            {
+                <div><span>Çözüm</span><b>@sonuc.CozumNotu</b></div>
+            }
+        </div>
+
+        @if (fotoVerisi != null)
+        {
+            <div class="m-foto"><img src="@fotoVerisi" alt="Arıza fotoğrafı" /></div>
+        }
+
+        <div style="height:12px"></div>
+        <button class="m-ikincil-buton" @onclick="Paylas">📤 Durumu paylaş</button>
+    </div>
+
+    @if (sonuc.Durum == "Çözüldü")
+    {
+        <div class="m-kart">
+            <div class="m-kart-baslik">⭐ Hizmeti değerlendir</div>
+
+            @if (sonuc.Puan is int verilenPuan)
+            {
+                <div class="m-yildizlar">
+                    @for (var y = 1; y <= 5; y++)
+                    {
+                        <span class="m-yildiz @(y <= verilenPuan ? "dolu" : "")">⭐</span>
+                    }
+                </div>
+                <div class="m-basari-kutu" style="text-align:center">
+                    Teşekkürler! @(string.IsNullOrWhiteSpace(sonuc.Yorum) ? "" : $"“{sonuc.Yorum}”")
+                </div>
+            }
+            else
+            {
+                <div class="m-yildizlar">
+                    @for (var y = 1; y <= 5; y++)
+                    {
+                        var deger = y;
+                        <button class="m-yildiz @(deger <= secilenPuan ? "dolu" : "")" @onclick="@(() => PuanSec(deger))">⭐</button>
+                    }
+                </div>
+                <textarea class="m-girdi" rows="2" @bind="yorum" placeholder="Yorumun (isteğe bağlı)"></textarea>
+                <div style="height:10px"></div>
+                <button class="m-ana-buton" @onclick="Degerlendir" disabled="@(secilenPuan == 0)">Gönder</button>
+            }
+        </div>
+    }
+
+    @if (gecmis.Count > 0)
+    {
+        <div class="m-kart">
+            <div class="m-kart-baslik">🕒 Durum geçmişi</div>
+            <div class="m-zaman">
+                @foreach (var g in gecmis)
+                {
+                    <div class="m-zaman-ogesi" style="--renk:@Gorunum.DurumRenk(g.Durum)">
+                        <b>@Gorunum.DurumIkon(g.Durum) @g.Durum</b>
+                        <small>@Gorunum.Tarih(g.Tarih)</small>
+                        @if (!string.IsNullOrWhiteSpace(g.Aciklama))
+                        {
+                            <small>@g.Aciklama</small>
+                        }
+                    </div>
+                }
+            </div>
+        </div>
+    }
+}
+
+@code {
+    [Parameter] public string? Kod { get; set; }
+
+    private string girdi = "";
+    private string yorum = "";
+    private int secilenPuan;
+    private bool arandi, araniyor;
+    private Ariza? sonuc;
+    private Teknisyen? ekip;
+    private string? fotoVerisi;
+    private List<DurumGecmisi> gecmis = new();
+    private List<string> sonKodlar = new();
+
+    protected override async Task OnParametersSetAsync()
+    {
+        sonKodlar = (await Veri.Arizalar()).Take(3).Select(a => a.TakipKodu).ToList();
+
+        if (!string.IsNullOrWhiteSpace(Kod))
+        {
+            girdi = Kod;
+            await Ara();
+        }
+    }
+
+    private async Task Tus(KeyboardEventArgs e)
+    {
+        if (e.Key == "Enter") await Ara();
+    }
+
+    private async Task Sec(string kod)
+    {
+        girdi = kod;
+        await Ara();
+    }
+
+    private async Task Ara()
+    {
+        Cihaz.Tik();
+        araniyor = true;
+        StateHasChanged();
+
+        var arama = Veri.KodIleBul(girdi);
+        await Task.WhenAll(arama, Task.Delay(350));
+        sonuc = await arama;
+
+        arandi = true;
+        ekip = null;
+        fotoVerisi = null;
+        gecmis = new();
+        secilenPuan = 0;
+        yorum = "";
+
+        if (sonuc != null)
+        {
+            girdi = sonuc.TakipKodu;
+            ekip = await Veri.TeknisyenGetir(sonuc.TeknisyenId);
+            gecmis = await Veri.Gecmis(sonuc.Id);
+            fotoVerisi = await Cihaz.FotoVerisi(sonuc.FotoYolu);
+        }
+        else
+        {
+            Cihaz.UzunTitre();
+        }
+
+        araniyor = false;
+    }
+
+    private void PuanSec(int puan)
+    {
+        secilenPuan = puan;
+        Cihaz.Tik();
+    }
+
+    private async Task Degerlendir()
+    {
+        if (sonuc == null || secilenPuan == 0) return;
+        await Veri.Degerlendir(sonuc.Id, secilenPuan, yorum);
+        sonuc = await Veri.ArizaGetir(sonuc.Id);
+
+        Cihaz.UzunTitre();
+        await Efekt.Konfeti(JS);
+        await Efekt.Ses(JS, Ayar, "basari");
+    }
+
+    private async Task Paylas()
+    {
+        if (sonuc == null) return;
+        Cihaz.Tik();
+        await Cihaz.Paylas("Arıza durumu",
+            $"Arıza {sonuc.TakipKodu}: {Gorunum.DurumIkon(sonuc.Durum)} {sonuc.Durum}\nEkip: {ekip?.AdSoyad ?? "Atanıyor"}\n(Arıza Takip demo uygulaması)");
+    }
+}

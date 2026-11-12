@@ -1,0 +1,113 @@
+@page "/grafik"
+@inject VeriServisi Veri
+@inject OturumServisi Oturum
+@inject NavigationManager Nav
+@inject IJSRuntime JS
+
+@if (Oturum.GirisYapti)
+{
+    <PanelMenu />
+
+    @if (ozet == null)
+    {
+        <Iskelet Adet="2" Istatistik="true" />
+    }
+    else
+    {
+        <div class="m-istatistik">
+            <div><b>@ozet.Toplam</b><small>Toplam</small></div>
+            <div><b>@AcilOrani</b><small>🚨 Acil oranı</small></div>
+            <div><b>@(ozet.OrtalamaCozumDakika is double d ? Gorunum.SureYaz(d) : "—")</b><small>⏱️ Ort. çözüm</small></div>
+            <div><b>@(ozet.OrtalamaPuan is double p ? p.ToString("0.0") : "—")</b><small>⭐ Memnuniyet</small></div>
+        </div>
+
+        <div class="m-kart">
+            <div class="m-kart-baslik">🍩 Arıza türü dağılımı</div>
+            <div class="m-grafik"><canvas id="grafikTur"></canvas></div>
+        </div>
+
+        <div class="m-kart">
+            <div class="m-kart-baslik">📅 Son 7 gün bildirim</div>
+            <div class="m-grafik kisa"><canvas id="grafikGun"></canvas></div>
+        </div>
+
+        <div class="m-kart">
+            <div class="m-kart-baslik">📌 Durumlara göre</div>
+            <div class="m-grafik kisa"><canvas id="grafikDurum"></canvas></div>
+        </div>
+
+        <div class="m-kart">
+            <div class="m-kart-baslik">🏆 Ekip performansı (çözülen iş)</div>
+            <div class="m-grafik"><canvas id="grafikEkip"></canvas></div>
+        </div>
+    }
+}
+
+@code {
+    private static readonly string[] Renkler = { "#F28C28", "#2563EB", "#16A34A", "#8B5CF6", "#DC2626", "#0EA5E9" };
+
+    private List<Ariza> arizalar = new();
+    private List<Teknisyen> ekipler = new();
+    private Ozet? ozet;
+    private bool ciz;
+
+    private string AcilOrani => arizalar.Count == 0
+        ? "—"
+        : $"%{arizalar.Count(a => a.Oncelik == "Acil") * 100 / arizalar.Count}";
+
+    protected override async Task OnInitializedAsync()
+    {
+        if (!Oturum.GirisYapti)
+        {
+            Nav.NavigateTo("giris");
+            return;
+        }
+
+        var yukleme = Veri.Arizalar();
+        await Task.WhenAll(yukleme, Task.Delay(350));
+        arizalar = await yukleme;
+        ekipler = await Veri.Teknisyenler();
+        ozet = await Veri.OzetGetir();
+        ciz = true;
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (!ciz) return;
+        ciz = false;
+
+        try
+        {
+            // 1) Tür dağılımı (halka)
+            var turler = VeriServisi.ArizaTurleri;
+            var turSayilari = turler.Select(t => arizalar.Count(a => a.ArizaTuru == t)).ToArray();
+            await JS.InvokeVoidAsync("efekt.grafik", "grafikTur", "doughnut", turler, turSayilari, Renkler.Take(turler.Length).ToArray(), false);
+
+            // 2) Son 7 gün
+            var gunler = Enumerable.Range(0, 7).Select(i => DateTime.Today.AddDays(i - 6)).ToList();
+            var gunEtiketleri = gunler.Select(g => g.ToString("ddd")).ToArray();
+            var gunSayilari = gunler.Select(g => arizalar.Count(a => a.BildirimTarihi.Date == g)).ToArray();
+            await JS.InvokeVoidAsync("efekt.grafik", "grafikGun", "bar", gunEtiketleri, gunSayilari, Enumerable.Repeat("#2563EB", 7).ToArray(), false);
+
+            // 3) Durumlar
+            var durumlar = VeriServisi.Durumlar;
+            var durumSayilari = durumlar.Select(d => arizalar.Count(a => a.Durum == d)).ToArray();
+            var durumRenkleri = durumlar.Select(Gorunum.DurumRenk).ToArray();
+            await JS.InvokeVoidAsync("efekt.grafik", "grafikDurum", "bar", durumlar, durumSayilari, durumRenkleri, false);
+
+            // 4) Ekip performansı (yatay çubuk)
+            var performans = ekipler
+                .Select(t => new { t.AdSoyad, Sayi = arizalar.Count(a => a.TeknisyenId == t.Id && a.Durum == "Çözüldü") })
+                .OrderByDescending(x => x.Sayi)
+                .ThenBy(x => x.AdSoyad)
+                .Take(6)
+                .ToList();
+            await JS.InvokeVoidAsync("efekt.grafik", "grafikEkip", "bar",
+                performans.Select(x => x.AdSoyad).ToArray(),
+                performans.Select(x => x.Sayi).ToArray(),
+                Enumerable.Repeat("#F28C28", performans.Count).ToArray(),
+                true);
+        }
+        catch { }
+    }
+}

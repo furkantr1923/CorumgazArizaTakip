@@ -1,0 +1,76 @@
+@page "/harita"
+@inject VeriServisi Veri
+@inject OturumServisi Oturum
+@inject NavigationManager Nav
+@inject IJSRuntime JS
+
+@if (Oturum.GirisYapti)
+{
+    <PanelMenu />
+
+    <div class="m-lejant">
+        <span><i style="background:#F59E0B"></i>Bekliyor</span>
+        <span><i style="background:#2563EB"></i>Yolda</span>
+        <span><i style="background:#16A34A"></i>Çözüldü / Müsait</span>
+        <span><i style="background:#6B7280"></i>Görevde</span>
+        <span><i style="background:#DC2626"></i>Acil (nabız)</span>
+    </div>
+
+    <label class="m-anahtar">
+        <input type="checkbox" @bind="cozulenleriGoster" @bind:after="Yenile" />
+        Çözülen arızaları da göster
+    </label>
+
+    <div id="genelHarita" class="m-harita buyuk"></div>
+    <div class="m-not">🚐 Yoldaki ekipler gerçek yol rotasında hareket eder. Bir işarete dokun, detaya git.</div>
+}
+
+@code {
+    private List<Ariza> arizalar = new();
+    private List<Teknisyen> ekipler = new();
+    private bool ciz, cozulenleriGoster;
+
+    protected override async Task OnInitializedAsync()
+    {
+        if (!Oturum.GirisYapti)
+        {
+            Nav.NavigateTo("giris");
+            return;
+        }
+
+        arizalar = await Veri.Arizalar();
+        ekipler = await Veri.Teknisyenler();
+        ciz = true;
+    }
+
+    private void Yenile() => ciz = true;
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (!ciz) return;
+        ciz = false;
+
+        var gosterilecek = arizalar.Where(a => cozulenleriGoster || a.Durum != "Çözüldü").ToList();
+        var ekipSozluk = ekipler.ToDictionary(t => t.Id);
+        var hareketEdenEkipler = new HashSet<int>();
+
+        var noktalar = new List<object>();
+        var cizgiler = new List<object>();
+
+        foreach (var a in gosterilecek)
+        {
+            noktalar.Add(HaritaYardimci.ArizaNoktasi(a, true));
+            if (a.Durum != "Çözüldü" && a.TeknisyenId is int tid && ekipSozluk.TryGetValue(tid, out var t))
+            {
+                cizgiler.Add(HaritaYardimci.Cizgi(a, t));
+                if (a.Durum == "Yolda") hareketEdenEkipler.Add(t.Id);
+            }
+        }
+
+        // Yoldaki ekip hareketli araç olarak çizilir, sabit işareti eklenmez
+        foreach (var ekip in ekipler.Where(e => !hareketEdenEkipler.Contains(e.Id)))
+            noktalar.Add(HaritaYardimci.EkipNoktasi(ekip));
+
+        try { await HaritaYardimci.Ciz(JS, "genelHarita", noktalar, cizgiler); } catch { }
+    }
+}

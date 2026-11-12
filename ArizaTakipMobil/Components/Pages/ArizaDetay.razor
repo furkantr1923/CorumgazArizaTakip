@@ -1,0 +1,292 @@
+@page "/ariza/{Id:int}"
+@inject VeriServisi Veri
+@inject OturumServisi Oturum
+@inject CihazServisi Cihaz
+@inject AyarServisi Ayar
+@inject NavigationManager Nav
+@inject IJSRuntime JS
+
+@if (ariza == null)
+{
+    <Iskelet Adet="3" />
+}
+else
+{
+    <a class="m-geri" href="panel">‹ Arıza listesi</a>
+
+    <div class="m-detay-ust">
+        <div>
+            <small>@ariza.TakipKodu</small>
+            <h1 tabindex="-1">@Gorunum.TurIkon(ariza.ArizaTuru) @ariza.ArizaTuru</h1>
+        </div>
+        <span class="m-rozet @Gorunum.DurumSinif(ariza.Durum)">@Gorunum.DurumIkon(ariza.Durum) @ariza.Durum</span>
+    </div>
+
+    if (mesaj != null)
+    {
+        <div class="m-basari-kutu">@mesaj</div>
+    }
+
+    <!-- Durum işlemi -->
+    <div class="m-kart">
+        <div class="m-kart-baslik">⚡ Durum işlemi</div>
+
+        @if (ariza.Durum == "Bekliyor")
+        {
+            <button class="m-ana-buton mavi" @onclick="@(() => Degistir("Yolda"))">🚐 Ekip yola çıktı</button>
+            <small style="color:var(--soluk)">Müşteriye bildirim gider, ekip haritada arızaya doğru hareket eder.</small>
+        }
+        else if (ariza.Durum == "Yolda")
+        {
+            <textarea class="m-girdi" rows="3" @bind="cozumNotu" @bind:event="oninput" placeholder="Çözüm notu: ne yapıldı?"></textarea>
+            @if (hata != null)
+            {
+                <div class="m-hatalar" style="margin-top:8px">@hata</div>
+            }
+            <div style="height:10px"></div>
+            <button class="m-ana-buton yesil" @onclick="@(() => Degistir("Çözüldü"))">✅ Arıza çözüldü</button>
+            <button class="m-ikincil-buton" @onclick="@(() => Degistir("Bekliyor"))">↩️ Beklemeye al</button>
+        }
+        else
+        {
+            <div class="m-satirlar">
+                <div><span>Çözüm notu</span><b>@(string.IsNullOrWhiteSpace(ariza.CozumNotu) ? "—" : ariza.CozumNotu)</b></div>
+                @if (ariza.KapanisTarihi is DateTime kapanis)
+                {
+                    <div><span>Çözüm süresi</span><b>@Gorunum.SureYaz((kapanis - ariza.BildirimTarihi).TotalMinutes)</b></div>
+                }
+                <div><span>Müşteri puanı</span><b class="m-yildiz-kucuk">@(ariza.Puan is int p ? new string('★', p) + new string('☆', 5 - p) : "Henüz yok")</b></div>
+                @if (!string.IsNullOrWhiteSpace(ariza.Yorum))
+                {
+                    <div><span>Yorum</span><b>“@ariza.Yorum”</b></div>
+                }
+            </div>
+            <div style="height:10px"></div>
+            <button class="m-ikincil-buton" @onclick="@(() => Degistir("Bekliyor"))">↩️ Yeniden aç</button>
+        }
+    </div>
+
+    <!-- Müşteri ve arıza bilgisi -->
+    <div class="m-kart">
+        <div class="m-kart-baslik">
+            <span>📄 Arıza bilgisi</span>
+            <button class="m-kucuk-buton" @onclick="Paylas">📤 Paylaş</button>
+        </div>
+        <div class="m-satirlar">
+            <div><span>Müşteri</span><b>@ariza.AdSoyad</b></div>
+            <div><span>Telefon</span><b><a href="@TelLinki">📞 @ariza.Telefon</a></b></div>
+            <div><span>Adres</span><b>@ariza.Adres</b></div>
+            <div><span>Öncelik</span><b>@(ariza.Oncelik == "Acil" ? "🚨 Acil" : "Normal")</b></div>
+            @if (!string.IsNullOrWhiteSpace(ariza.Aciklama))
+            {
+                <div><span>Açıklama</span><b>@ariza.Aciklama</b></div>
+            }
+            <div><span>Bildirim</span><b>@Gorunum.Tarih(ariza.BildirimTarihi) (@Gorunum.GecenSure(ariza.BildirimTarihi))</b></div>
+        </div>
+        @if (fotoVerisi != null)
+        {
+            <div class="m-foto"><img src="@fotoVerisi" alt="Arıza fotoğrafı" /></div>
+        }
+    </div>
+
+    <!-- Ekip ve harita -->
+    <div class="m-kart">
+        <div class="m-kart-baslik">👷 Atanan ekip</div>
+
+        @if (ekip != null)
+        {
+            <div class="m-ekip-satir">
+                <div class="m-avatar @(ekip.Musait ? "" : "gri")">@ekip.AdSoyad.Substring(0, 1)</div>
+                <div>
+                    <b>@ekip.AdSoyad</b>
+                    <small>@ekip.Uzmanlik · @ekip.Bolge</small>
+                </div>
+                <span class="m-rozet @(ekip.Musait ? "musait" : "gorevde")">@(ekip.Musait ? "Müsait" : "Görevde")</span>
+            </div>
+            <div class="m-bilgi-izgara">
+                <div>
+                    <small>@(rota?.Gercek == true ? "Yol mesafesi" : "Kuş uçuşu")</small>
+                    <b>@((rota?.MesafeKm ?? Mesafe(ekip)).ToString("0.0")) km</b>
+                </div>
+                <div>
+                    <small>Tahmini varış</small>
+                    <b>@(rota?.Gercek == true ? $"~{Math.Ceiling(rota.SureDk) + 5} dk" : Gorunum.TahminiVaris(Mesafe(ekip)))</b>
+                </div>
+            </div>
+        }
+        else
+        {
+            <div class="m-bos" style="padding:10px">Henüz ekip atanmadı.</div>
+        }
+
+        <div id="detayHaritasi" class="m-harita kucuk"></div>
+        @if (ariza.Durum == "Yolda")
+        {
+            <small style="color:var(--soluk)">🚐 Ekip aracı gerçek yol rotası üzerinde hareket ediyor.</small>
+        }
+
+        <div class="m-etiket">Ekibi değiştir (yakından uzağa)</div>
+        <select class="m-girdi" @bind="secilenEkip">
+            <option value="">— Ekip atanmasın —</option>
+            @foreach (var t in tumEkipler.OrderBy(Mesafe))
+            {
+                <option value="@t.Id">@t.AdSoyad · @Mesafe(t).ToString("0.0") km · @(t.Musait ? "Müsait" : "Görevde")</option>
+            }
+        </select>
+        <div style="height:10px"></div>
+        <button class="m-ikincil-buton" @onclick="EkipKaydet">💾 Ekibi kaydet</button>
+    </div>
+
+    <!-- Geçmiş -->
+    <div class="m-kart">
+        <div class="m-kart-baslik">🕒 Durum geçmişi</div>
+        <div class="m-zaman">
+            @foreach (var g in gecmis.AsEnumerable().Reverse())
+            {
+                <div class="m-zaman-ogesi" style="--renk:@Gorunum.DurumRenk(g.Durum)">
+                    <b>@Gorunum.DurumIkon(g.Durum) @g.Durum</b>
+                    <small>@Gorunum.Tarih(g.Tarih) · @g.Degistiren</small>
+                    @if (!string.IsNullOrWhiteSpace(g.Aciklama))
+                    {
+                        <small>@g.Aciklama</small>
+                    }
+                </div>
+            }
+        </div>
+    </div>
+}
+
+@code {
+    [Parameter] public int Id { get; set; }
+
+    private Ariza? ariza;
+    private Teknisyen? ekip;
+    private RotaOzet? rota;
+    private List<Teknisyen> tumEkipler = new();
+    private List<DurumGecmisi> gecmis = new();
+    private string secilenEkip = "";
+    private string cozumNotu = "";
+    private string? mesaj, hata, fotoVerisi;
+    private bool ciz, kutla;
+
+    protected override async Task OnParametersSetAsync()
+    {
+        if (!Oturum.GirisYapti)
+        {
+            Nav.NavigateTo("giris");
+            return;
+        }
+        await Yukle();
+    }
+
+    private async Task Yukle()
+    {
+        var bulunan = await Veri.ArizaGetir(Id);
+        if (bulunan == null)
+        {
+            Nav.NavigateTo("panel");
+            return;
+        }
+
+        ariza = bulunan;
+        tumEkipler = await Veri.Teknisyenler();
+        ekip = tumEkipler.FirstOrDefault(t => t.Id == bulunan.TeknisyenId);
+        gecmis = await Veri.Gecmis(Id);
+        fotoVerisi = await Cihaz.FotoVerisi(bulunan.FotoYolu);
+        secilenEkip = bulunan.TeknisyenId?.ToString() ?? "";
+        rota = null;
+        ciz = true;
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (kutla)
+        {
+            kutla = false;
+            await Efekt.Konfeti(JS);
+        }
+
+        if (!ciz || ariza == null) return;
+        ciz = false;
+
+        var noktalar = new List<object> { HaritaYardimci.ArizaNoktasi(ariza, false) };
+        var cizgiler = new List<object>();
+        if (ekip != null)
+        {
+            // Yoldaysa ekip aracı hareket eder, ayrıca sabit ekip işareti koymaya gerek yok
+            if (ariza.Durum != "Yolda") noktalar.Add(HaritaYardimci.EkipNoktasi(ekip));
+            if (ariza.Durum != "Çözüldü") cizgiler.Add(HaritaYardimci.Cizgi(ariza, ekip));
+        }
+
+        try
+        {
+            var ozetler = await HaritaYardimci.CizVeOlc(JS, "detayHaritasi", noktalar, cizgiler);
+            if (ozetler.Length > 0 && ozetler[0].Gercek)
+            {
+                rota = ozetler[0];
+                StateHasChanged();
+            }
+        }
+        catch { }
+    }
+
+    private string TelLinki => "tel:" + new string((ariza?.Telefon ?? "").Where(char.IsDigit).ToArray());
+
+    private double Mesafe(Teknisyen t) =>
+        ariza == null ? 0 : VeriServisi.MesafeKm(ariza.Enlem, ariza.Boylam, t.Enlem, t.Boylam);
+
+    private async Task Degistir(string yeniDurum)
+    {
+        hata = null;
+        if (yeniDurum == "Çözüldü" && cozumNotu.Trim().Length < 3)
+        {
+            hata = "Kapatmadan önce kısa bir çözüm notu yaz.";
+            Cihaz.UzunTitre();
+            await Efekt.Ses(JS, Ayar, "uyari");
+            return;
+        }
+
+        await Veri.DurumDegistir(Id, yeniDurum, cozumNotu, Oturum.KullaniciAdi ?? "personel");
+        mesaj = $"{Gorunum.DurumIkon(yeniDurum)} Durum “{yeniDurum}” olarak güncellendi.";
+        cozumNotu = "";
+        await Yukle();
+
+        // Müşteriye telefon bildirimi + ses + titreşim
+        var kod = ariza?.TakipKodu ?? "";
+        if (yeniDurum == "Yolda")
+        {
+            var sure = ekip == null ? "" : $" Tahmini varış {Gorunum.TahminiVaris(Mesafe(ekip))}.";
+            Cihaz.BildirimGoster("🚐 Ekibiniz yola çıktı", $"{kod}: {ekip?.AdSoyad ?? "Ekip"} adresinize geliyor.{sure}");
+            Cihaz.UzunTitre();
+            await Efekt.Ses(JS, Ayar, "bildirim");
+        }
+        else if (yeniDurum == "Çözüldü")
+        {
+            Cihaz.BildirimGoster("✅ Arızanız çözüldü", $"{kod}: Ekibimizi değerlendirmek için takip kodunuzla sorgulayın.");
+            Cihaz.UzunTitre();
+            kutla = true;
+            await Efekt.Ses(JS, Ayar, "basari");
+        }
+        else
+        {
+            Cihaz.Tik();
+        }
+    }
+
+    private async Task EkipKaydet()
+    {
+        int? yeniId = int.TryParse(secilenEkip, out var x) ? x : null;
+        await Veri.TeknisyenAta(Id, yeniId, Oturum.KullaniciAdi ?? "personel");
+        mesaj = yeniId == null ? "Ekip ataması kaldırıldı." : "👷 Ekip güncellendi.";
+        Cihaz.Tik();
+        await Yukle();
+    }
+
+    private async Task Paylas()
+    {
+        if (ariza == null) return;
+        Cihaz.Tik();
+        await Cihaz.Paylas("Arıza bilgisi",
+            $"{ariza.TakipKodu} · {ariza.ArizaTuru} ({ariza.Oncelik})\nDurum: {ariza.Durum}\nAdres: {ariza.Adres}\nEkip: {ekip?.AdSoyad ?? "Atanmadı"}");
+    }
+}

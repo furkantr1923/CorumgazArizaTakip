@@ -1,4 +1,7 @@
 <Solution>
+  <Project Path="ArizaTakipMobil/ArizaTakipMobil.csproj" Id="9891812f-f486-4486-9b08-25aebb8c7ccd">
+    <Deploy Solution="Debug|*" />
+  </Project>
   <Project Path="CorumgazArizaTakip.Tests/CorumgazArizaTakip.Tests.csproj" Id="1cf1d260-570c-4551-a991-bb0535b0534b" />
   <Project Path="CorumgazArizaTakip/CorumgazArizaTakip.csproj" />
 </Solution>

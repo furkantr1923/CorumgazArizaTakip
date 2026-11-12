@@ -1,0 +1,65 @@
+@page "/"
+@inject VeriServisi Veri
+@inject OturumServisi Oturum
+
+<section class="m-hero">
+    <div class="m-nabiz">🔥</div>
+    <h1 tabindex="-1">Doğal gaz arızanı<br />saniyeler içinde bildir</h1>
+    <p>Haritadan konumunu seç, sistem sana en yakın uygun ekibi otomatik atasın.</p>
+</section>
+
+<a href="bildir" class="m-buyuk-kart">
+    <span class="ikon">📝</span>
+    <div>
+        <b>Arıza Bildir</b>
+        <small>Fotoğraf, sesli açıklama ve konum ile</small>
+    </div>
+    <span class="ok">›</span>
+</a>
+
+<a href="sorgu" class="m-buyuk-kart mavi">
+    <span class="ikon">🔎</span>
+    <div>
+        <b>Durum Sorgula</b>
+        <small>Takip kodunla izle, ekibi değerlendir</small>
+    </div>
+    <span class="ok">›</span>
+</a>
+
+<a href="@(Oturum.GirisYapti ? "panel" : "giris")" class="m-buyuk-kart yesil">
+    <span class="ikon">👷</span>
+    <div>
+        <b>Personel Paneli</b>
+        <small>Canlı harita, grafikler ve ekip yönetimi</small>
+    </div>
+    <span class="ok">›</span>
+</a>
+
+@if (ozet == null)
+{
+    <Iskelet Adet="0" Istatistik="true" />
+}
+else
+{
+    <div class="m-istatistik">
+        <div><b>@ozet.Toplam</b><small>Toplam</small></div>
+        <div><b>@(ozet.Bekliyor + ozet.Yolda)</b><small>Açık</small></div>
+        <div><b>@ozet.Cozuldu</b><small>Çözüldü</small></div>
+        <div><b>@(ozet.OrtalamaPuan is double p ? p.ToString("0.0") + "⭐" : "—")</b><small>Memnuniyet</small></div>
+    </div>
+}
+
+<div class="m-not">
+    ℹ️ Furkan Baykal’ın portfolyo projesidir. Tüm veriler yalnızca bu telefonda saklanır.
+</div>
+
+@code {
+    private Ozet? ozet;
+
+    protected override async Task OnInitializedAsync()
+    {
+        var yukleme = Veri.OzetGetir();
+        await Task.WhenAll(yukleme, Task.Delay(400));   // iskelet animasyonu kısa süre görünsün
+        ozet = await yukleme;
+    }
+}
