@@ -3,9 +3,31 @@
 Doğal gaz dağıtım şirketleri için geliştirilmiş, **harita tabanlı arıza bildirim ve ekip yönetim sistemi**.
 Müşteri haritadan konumunu seçerek arıza bildirir, sistem en yakın müsait ekibi otomatik atar, personel arızayı gerçek yol rotasıyla takip eder.
 
-> ⚠️ Bu proje bir **portfolyo / demo** çalışmasıdır. Çorumgaz'ın resmi sistemi değildir.
+Proje iki parçadan oluşur: **ASP.NET Core MVC web uygulaması** ve **.NET MAUI Android uygulaması**.
 
-## ✨ Özellikler
+> ⚠️ Bu proje bir **portfolyo / demo** çalışmasıdır. Çorumgaz'ın resmi sistemi değildir. Gerçek doğal gaz arızası veya gaz kokusu için **187**'yi arayın.
+
+## 📱 Mobil uygulama (Android)
+
+👉 **[APK'yı indir](https://github.com/furkantr1923/CorumgazArizaTakip/releases/latest)**
+
+Kurulum: APK'yı indir → aç → "Bilinmeyen kaynaklara izin ver" → Yükle
+Demo personel girişi: `admin` / `demo123`
+
+- 📍 Haritaya dokunarak ya da GPS ile konum seçme, adresin otomatik dolması
+- 🤖 Uzmanlık ve mesafeye göre **otomatik ekip atama**
+- 🗺️ Gerçek yol rotası ve rotada **hareket eden ekip aracı**
+- 📸 Kamerayla ya da galeriden arıza fotoğrafı
+- 🎙️ Açıklamayı **sesle yazma** (Türkçe)
+- 🔔 Telefon bildirimi: kayıt alındı, ekip yolda, arıza çözüldü
+- 👆 **Parmak izi** ile personel girişi
+- ⭐ Çözülen arızaya 1-5 yıldız ve yorum
+- 📊 Grafikler: tür dağılımı, son 7 gün, durumlar, ekip performansı
+- 🚨 Gaz kaçağında acil mod: siren, titreşim, kırmızı uyarı
+- 🌙 Karanlık mod, açılış animasyonu, konfeti ve ses efektleri
+- 💾 Veriler telefonda **SQLite** ile saklanır, sunucu gerekmez
+
+## ✨ Web uygulaması özellikleri
 
 **Müşteri tarafı (giriş gerektirmez)**
 - 📍 Haritadan konum seçme, "Konumumu Bul" ve adresin otomatik dolması
@@ -34,7 +56,8 @@ Müşteri haritadan konumunu seçerek arıza bildirir, sistem en yakın müsait 
 | Katman | Teknoloji |
 |---|---|
 | Backend | C#, ASP.NET Core MVC (.NET 10) |
-| Veri | Entity Framework Core, SQLite |
+| Mobil | .NET MAUI Blazor Hybrid, Android API'leri |
+| Veri | Entity Framework Core, SQLite (web) · sqlite-net (mobil) |
 | Ön yüz | Razor, Bootstrap 5, CSS animasyonları |
 | Harita | Leaflet, OpenStreetMap, Nominatim, OSRM |
 | Grafik | Chart.js |
@@ -49,7 +72,7 @@ Müşteri haritadan konumunu seçerek arıza bildirir, sistem en yakın müsait 
 | `GET /api/arizalar/istatistik` | Özet istatistikler | 🔐 |
 | `GET /api/arizalar/sorgu/{kod}` | Takip kodu sorgusu | 🌍 |
 
-## 🚀 Çalıştırma
+## 🚀 Çalıştırma (web)
 
 ```bash
 git clone https://github.com/furkantr1923/CorumgazArizaTakip.git
@@ -62,3 +85,22 @@ dotnet run --launch-profile https
 ```
 
 Tarayıcıda `https://localhost:7216` adresini aç. Veritabanı ve örnek ekipler ilk çalıştırmada otomatik oluşur.
+
+**Testleri çalıştırmak için:**
+
+```bash
+dotnet test
+```
+
+## 📁 Proje yapısı
+
+```
+CorumgazArizaTakip/          → ASP.NET Core MVC web uygulaması
+CorumgazArizaTakip.Tests/    → xUnit birim testleri
+ArizaTakipMobil/             → .NET MAUI Android uygulaması
+```
+
+## 👤 Geliştirici
+
+**Furkan Baykal** · Yazılım Mühendisi
+GitHub: [@furkantr1923](https://github.com/furkantr1923)
